@@ -1,0 +1,27 @@
+# Visual Studio files
+.vs/
+*.VC.db
+*.VC.opendb
+
+# Ignore everything in bin/
+bin/*
+
+# But keep the bin/data/ folder and its contents
+!bin/data/
+!bin/data/**
+
+# Optional: Ignore debug files specifically
+bin/*.pdb
+obj/
+
+*.exe
+*.pdb
+*.ilk
+*.idb
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Git files
+.DS_Store
