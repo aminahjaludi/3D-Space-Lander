@@ -70,6 +70,13 @@ public:
 	bool bCollisionDetected = false;
 	bool bResolvingCollision = false;
 
+	//Keys pressed attributes
+	//Keeps track of which keys are *currently* being pressed
+	bool up_pressed = false;
+	bool down_pressed = false;
+	bool right_pressed = false;
+	bool left_pressed = false;
+
 	ofVec3f selectedPoint;
 	ofVec3f intersectPoint;
 

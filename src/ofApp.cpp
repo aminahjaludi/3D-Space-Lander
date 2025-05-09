@@ -225,10 +225,21 @@ void ofApp::drawAxis(ofVec3f location) {
 	ofPopMatrix();
 }
 
-
 void ofApp::keyPressed(int key) {
 
 	switch (key) {
+	case OF_KEY_UP:
+		up_pressed = true;
+		break;
+	case OF_KEY_DOWN:
+		down_pressed = true;
+		break;
+	case OF_KEY_RIGHT:
+		right_pressed = true;
+		break;
+	case OF_KEY_LEFT:
+		left_pressed = true;
+		break;
 	case 'B':
 	case 'b':
 		bDisplayBBoxes = !bDisplayBBoxes;
@@ -307,7 +318,18 @@ void ofApp::togglePointsDisplay() {
 void ofApp::keyReleased(int key) {
 
 	switch (key) {
-
+	case OF_KEY_UP:
+		up_pressed = false;
+		break;
+	case OF_KEY_DOWN:
+		down_pressed = false;
+		break;
+	case OF_KEY_RIGHT:
+		right_pressed = false;
+		break;
+	case OF_KEY_LEFT:
+		left_pressed = false;
+		break;
 	case OF_KEY_ALT:
 		cam.disableMouseInput();
 		bAltKeyDown = false;
