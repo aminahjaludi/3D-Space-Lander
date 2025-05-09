@@ -49,23 +49,14 @@
     <ClCompile Include="..\..\..\addons\ofxGui\src\ofxToggle.cpp">
       <Filter>addons\ofxGui\src</Filter>
     </ClCompile>
-    <ClCompile Include="Particle.cpp">
-      <Filter>src\particle system</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticleEmitter.cpp">
-      <Filter>src\particle system</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticleSystem.cpp">
-      <Filter>src\particle system</Filter>
-    </ClCompile>
     <ClCompile Include="src\box.cc">
-      <Filter>src\octree</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\Octree.cpp">
-      <Filter>src\octree</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\Util.cpp">
-      <Filter>src\octree</Filter>
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -107,12 +98,6 @@
     </Filter>
     <Filter Include="addons\ofxGui\src">
       <UniqueIdentifier>{E5E36711--068-F-47-7B-B-5B5-19990EE93F09}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\particle system">
-      <UniqueIdentifier>{ed4a410b-ea7c-4502-a96b-a3df295cb966}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\octree">
-      <UniqueIdentifier>{10df458a-09e3-418a-9ad1-76ca9f98c795}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -416,35 +401,23 @@
     <ClInclude Include="..\..\..\addons\ofxGui\src\ofxToggle.h">
       <Filter>addons\ofxGui\src</Filter>
     </ClInclude>
-    <ClInclude Include="Particle.h">
-      <Filter>src\particle system</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleEmitter.h">
-      <Filter>src\particle system</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleSystem.h">
-      <Filter>src\particle system</Filter>
-    </ClInclude>
-    <ClInclude Include="TransformObject.h">
-      <Filter>src\particle system</Filter>
-    </ClInclude>
-    <ClInclude Include="src\box.h">
-      <Filter>src\octree</Filter>
-    </ClInclude>
     <ClInclude Include="src\Octree.h">
-      <Filter>src\octree</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ray.h">
-      <Filter>src\octree</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Util.h">
-      <Filter>src\octree</Filter>
+      <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\Primitives.h">
-      <Filter>src\octree</Filter>
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ray.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Util.h">
+      <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\vector3.h">
-      <Filter>src\octree</Filter>
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\box.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -105,9 +105,6 @@
     <PostBuildEvent />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Particle.cpp" />
-    <ClCompile Include="ParticleEmitter.cpp" />
-    <ClCompile Include="ParticleSystem.cpp" />
     <ClCompile Include="src\box.cc" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Octree.cpp" />
@@ -129,9 +126,6 @@
     <ClCompile Include="src\Util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Particle.h" />
-    <ClInclude Include="ParticleEmitter.h" />
-    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="src\box.h" />
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\ofApp.h" />
@@ -238,7 +232,6 @@
     <ClInclude Include="src\ray.h" />
     <ClInclude Include="src\Util.h" />
     <ClInclude Include="src\vector3.h" />
-    <ClInclude Include="TransformObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(OF_ROOT)\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj">
