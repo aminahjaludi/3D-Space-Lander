@@ -108,6 +108,7 @@
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="ParticleEmitter.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="Shape.h" />
     <ClCompile Include="src\box.cc" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Octree.cpp" />
@@ -132,6 +133,8 @@
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleEmitter.h" />
     <ClInclude Include="ParticleSystem.h" />
+    <ClInclude Include="ShapeIntegrate.h" />
+    <ClInclude Include="SpacecraftShape.h" />
     <ClInclude Include="src\box.h" />
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\ofApp.h" />

@@ -5,7 +5,7 @@
 #include  "ofxAssimpModelLoader.h"
 #include "Octree.h"
 #include "glm/gtx/intersect.hpp"
-
+#include "../SpacecraftShape.h"
 
 class ofApp : public ofBaseApp {
 
@@ -37,18 +37,18 @@ public:
 	bool raySelectWithOctree(ofVec3f& pointRet);
 	glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 p, glm::vec3 n);
 	void resolveCollision();
+	void checkCollision();
+
 	ofEasyCam cam;
 	ofxAssimpModelLoader mars, lander;
 	ofLight light;
 	Box boundingBox, landerBounds;
-	Box testBox;
 	vector<Box> colBoxList;
 	bool bLanderSelected = false;
 	Octree octree;
 	TreeNode selectedNode;
 	glm::vec3 mouseDownPos, mouseLastPos;
 	bool bInDrag = false;
-
 
 	ofxIntSlider numLevels;
 	ofxToggle bTimingInfo;
@@ -78,4 +78,25 @@ public:
 	const float selectionRange = 4.0;
 
 	vector<ofColor> levelColors;
+
+	bool up_pressed = false;
+	bool down_pressed = false;
+	bool left_pressed = false;
+	bool right_pressed = false;
+	bool w_pressed = false;
+	bool s_pressed = false;
+	bool d_pressed = false;
+	bool a_pressed = false;
+	float landerLoadedTime = 0;
+
+	SpacecraftShape ship;
+
+	void moveUp();
+	void moveDown();
+	void rotateRight();
+	void rotateLeft();
+	void moveRight();
+	void moveLeft();
+	void moveForward();
+	void moveBackwards();
 };
