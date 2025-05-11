@@ -295,14 +295,14 @@ void ofApp::keyPressed(int key) {
 
 	switch (key) {
 	case '1':
-		if (restart) {
+		if (restart && !classic_mode && !dragging_mode) {
 			classic_mode = true;
 			dragging_mode = false;
 			setUpClassicMode();
 		}
 		break;
 	case '2':
-		if (restart) {
+		if (restart && !dragging_mode && !dragging_mode) {
 			classic_mode = false;
 			dragging_mode = true;
 		}
