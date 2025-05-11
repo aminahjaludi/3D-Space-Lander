@@ -302,7 +302,7 @@ void ofApp::keyPressed(int key) {
 		}
 		break;
 	case '2':
-		if (restart && !dragging_mode && !dragging_mode) {
+		if (restart && !dragging_mode && !classic_mode) {
 			classic_mode = false;
 			dragging_mode = true;
 		}
