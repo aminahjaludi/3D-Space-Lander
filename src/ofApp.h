@@ -23,7 +23,6 @@ public:
 	void mouseEntered(int x, int y);
 	void mouseExited(int x, int y);
 	void windowResized(int w, int h);
-	void dragEvent2(ofDragInfo dragInfo);
 	void dragEvent(ofDragInfo dragInfo);
 	void gotMessage(ofMessage msg);
 	void drawAxis(ofVec3f);
@@ -38,6 +37,7 @@ public:
 	glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 p, glm::vec3 n);
 	void resolveCollision();
 	void checkCollision();
+	void setUpClassicMode();
 
 	ofEasyCam cam;
 	ofxAssimpModelLoader mars, lander;
@@ -47,18 +47,20 @@ public:
 	bool bLanderSelected = false;
 	Octree octree;
 	TreeNode selectedNode;
-	glm::vec3 mouseDownPos, mouseLastPos;
+	glm::vec3 mouseDownPos; //mouseLastPos;
 	bool bInDrag = false;
 
-	ofxIntSlider numLevels;
-	ofxToggle bTimingInfo;
+	//ofxIntSlider numLevels;
+	//ofxToggle bTimingInfo;
 	ofxPanel gui;
+	ofTrueTypeFont titleFont;
+	ofTrueTypeFont instructionFont;
+	ofImage backgroundImg;
 
 	bool bAltKeyDown;
 	bool bCtrlKeyDown;
 	bool bWireframe;
 	bool bDisplayPoints;
-	bool bPointSelected;
 	bool bHide;
 	bool pointSelected = false;
 	bool bDisplayLeafNodes = false;
@@ -68,7 +70,6 @@ public:
 	bool bLanderLoaded;
 	bool bTerrainSelected;
 	bool bCollisionDetected = false;
-	bool bResolvingCollision = false;
 
 	ofVec3f selectedPoint;
 	ofVec3f intersectPoint;
@@ -87,6 +88,10 @@ public:
 	bool s_pressed = false;
 	bool d_pressed = false;
 	bool a_pressed = false;
+	bool quit = false;
+	bool restart = false;
+	bool classic_mode = false;
+	bool dragging_mode = false;
 	float landerLoadedTime = 0;
 
 	SpacecraftShape ship;
