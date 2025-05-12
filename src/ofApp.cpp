@@ -7,15 +7,16 @@
 
 #include "ofApp.h"
 #include "Util.h"
+#include <sstream>
+#include <iomanip>
 
 //--------------------------------------------------------------
 // setup scene, lighting, state and load geometry
 //
 void ofApp::setup() {
 	bWireframe = false;
-	bDisplayPoints = false;
 	bLanderLoaded = false;
-	bTerrainSelected = true;
+	//bTerrainSelected = true;
 
 	cam.setDistance(10);
 	cam.setNearClip(.1);
@@ -37,11 +38,8 @@ void ofApp::setup() {
 
 	// create sliders for testing
 	gui.setup();
-	//gui.add(numLevels.setup("Num of Octree Lvls", 1, 1, 10));
-	//gui.add(bTimingInfo.setup("Timing Info", false));;
+	gui.add(altitude_toggle.setup("Altitude Info", false));;
 	bHide = false;
-
-	
 
 	//create Octree for testing
 	octree.create(mars.getMesh(0), 20);;
@@ -58,6 +56,7 @@ void ofApp::setup() {
 	levelColors.push_back(ofColor::magenta);
 	levelColors.push_back(ofColor::limeGreen);
 	levelColors.push_back(ofColor::pink);
+
 }
 
 //--------------------------------------------------------------
@@ -65,6 +64,7 @@ void ofApp::setup() {
 void ofApp::update() {
 	if (restart) {
 		if (bLanderLoaded) {
+
 			//Move lander in accordance to key pressed
 			if (w_pressed) {
 				moveUp();
@@ -91,26 +91,13 @@ void ofApp::update() {
 				moveLeft();
 			}
 
-			if (!bInDrag) {
-
-				//Moon gravity (approx. 1.62 downward)
-				glm::vec3 moonGravity = glm::vec3(0, -1.62f * ship.mass, 0);
-				ship.addForce(moonGravity);
-
-				if ((ofGetElapsedTimef() - landerLoadedTime > 2.0f)) {
-					glm::vec3 turbulenceForce(
-						ofRandom(-5.0f, 5.0f),
-						ofRandom(-5.0f, 5.0f),
-						ofRandom(-5.0f, 5.0f)
-					);
-
-					ship.addForce(turbulenceForce);
-				}
-			}
-
+			applyExternalForces();
 			ship.integrator();
+
 			lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
 			lander.setRotation(0, ship.rot, 0, 1, 0);
+
+			calculateAltitude();
 		}
 		checkCollision();
 
@@ -176,13 +163,21 @@ void ofApp::draw() {
 		
 		glDepthMask(true);
 
-		cam.begin();
+		if (altitude_toggle) {
+			ostringstream oss;
+			oss << fixed << setprecision(1) << "Altitude is " << altitude;
+			string altitude_str = oss.str();
 
-		//octree.draw(numLevels, 0, levelColors);
+			float x = ofGetWidth() - 140;
+			float y = 20;
+			ofSetColor(ofColor::white);
+			ofDrawBitmapString(altitude_str, x, y);
+		}
+		cam.begin();
 
 		ofPushMatrix();
 
-		if (bWireframe) { // wireframe mode  (include axis)
+		if (bWireframe) {
 			ofDisableLighting();
 			ofSetColor(ofColor::slateGray);
 			mars.drawWireframe();
@@ -233,32 +228,8 @@ void ofApp::draw() {
 		}
 		if (bTerrainSelected) drawAxis(ofVec3f(0, 0, 0));
 
-		if (bDisplayPoints) { // display points as an option    
-			glPointSize(3);
-			ofSetColor(ofColor::green);
-			mars.drawVertices();
-		}
-
 		// recursively draw octree1
 		ofDisableLighting();
-		int level = 0;
-
-		if (bDisplayLeafNodes) {
-			octree.drawLeafNodes(octree.root);
-			cout << "num leaf: " << octree.numLeaf << endl;
-		}
-		
-		/*else if (bDisplayOctree) {
-			ofNoFill();
-			ofSetColor(ofColor::white);
-			octree.draw(numLevels, 0, levelColors);
-		}*/
-
-		// draw colliding (leaf) boxes
-		ofSetColor(ofColor::mediumPurple);
-		for (int i = 0; i < colBoxList.size(); i++) {
-			Octree::drawBox(colBoxList[i]);
-		}
 
 		ofPopMatrix();
 		cam.end();
@@ -360,10 +331,6 @@ void ofApp::keyPressed(int key) {
 	case 'f':
 		ofToggleFullscreen();
 		break;
-	case 'L':
-	case 'l':
-		bDisplayLeafNodes = !bDisplayLeafNodes;
-		break;
 	case 'O':
 	case 'o':
 		bDisplayOctree = !bDisplayOctree;
@@ -379,11 +346,11 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'v':
 	case 'V':
-		togglePointsDisplay();
+		//togglePointsDisplay();
 		break;
 	//case 'w':
 		//toggleWireframeMode();
-		break;
+		//break;
 	case OF_KEY_ALT:
 		cam.enableMouseInput();
 		break;
@@ -398,10 +365,6 @@ void ofApp::toggleWireframeMode() {
 
 void ofApp::toggleSelectTerrain() {
 	bTerrainSelected = !bTerrainSelected;
-}
-
-void ofApp::togglePointsDisplay() {
-	bDisplayPoints = !bDisplayPoints;
 }
 
 void ofApp::keyReleased(int key) {
@@ -654,7 +617,7 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 			bLanderLoaded = true;
 			lander.setScaleNormalization(false);
 			lander.setPosition(0, 0, 0);
-			cout << "number of meshes: " << lander.getNumMeshes() << endl;
+			//cout << "number of meshes: " << lander.getNumMeshes() << endl;
 			bboxList.clear();
 			for (int i = 0; i < lander.getMeshCount(); i++) {
 				bboxList.push_back(Octree::meshBounds(lander.getMesh(i)));
@@ -733,11 +696,6 @@ glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
 //--------------------------------------------------------------
 
 void ofApp::resolveCollision() {
-
-	//Move lander upwards
-	//glm::vec3 pos = lander.getPosition();
-	//lander.setPosition(pos.x, pos.y + 0.1, pos.z);
-	//ship.pos = lander.getPosition();
 	glm::vec3 impulseForce = glm::vec3(0, 1, 0);  // World up
 
 	impulseForce *= ship.thrust;
@@ -867,5 +825,46 @@ void ofApp::setUpClassicMode() {
 
 		// set up bounding box for lander while we are at it
 		landerBounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+	}
+}
+
+void ofApp::calculateAltitude() {
+	if (altitude_toggle) {
+		ofVec3f min = lander.getSceneMin() + lander.getPosition();
+		ofVec3f max = lander.getSceneMax() + lander.getPosition();
+		Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+
+		Vector3 bottomCenter(
+			(bounds.min().x() + bounds.max().x()) / 2.0f,   // center in X
+			bounds.min().y(),								// bottom in Y
+			(bounds.min().z() + bounds.max().z()) / 2.0f    // center in Z
+		);
+
+		TreeNode leaf;
+		Ray ray = Ray(bottomCenter, Vector3(0, -1, 0));
+
+		bool intersected = octree.intersect(ray, octree.root, leaf);
+
+		if (intersected) {
+			ofDefaultVertexType vert = octree.mesh.getVertex(leaf.points[0]);
+			altitude = bottomCenter.y() - vert.y;
+		}
+	}
+}
+
+void ofApp::applyExternalForces() {
+	if (!bInDrag) {
+		glm::vec3 moonGravity = glm::vec3(0, -1.62f * ship.mass, 0);
+		ship.addForce(moonGravity);
+
+		if ((ofGetElapsedTimef() - landerLoadedTime > 2.0f)) {
+			glm::vec3 turbulenceForce(
+				ofRandom(-5.0f, 5.0f),
+				ofRandom(-5.0f, 5.0f),
+				ofRandom(-5.0f, 5.0f)
+			);
+
+			ship.addForce(turbulenceForce);
+		}
 	}
 }

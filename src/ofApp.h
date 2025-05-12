@@ -38,6 +38,16 @@ public:
 	void resolveCollision();
 	void checkCollision();
 	void setUpClassicMode();
+	void calculateAltitude();
+	void applyExternalForces();
+	void moveUp();
+	void moveDown();
+	void rotateRight();
+	void rotateLeft();
+	void moveRight();
+	void moveLeft();
+	void moveForward();
+	void moveBackwards();
 
 	ofEasyCam cam;
 	ofxAssimpModelLoader mars, lander;
@@ -50,9 +60,9 @@ public:
 	glm::vec3 mouseDownPos; //mouseLastPos;
 	bool bInDrag = false;
 
-	//ofxIntSlider numLevels;
-	//ofxToggle bTimingInfo;
 	ofxPanel gui;
+	ofxToggle altitude_toggle;
+
 	ofTrueTypeFont titleFont;
 	ofTrueTypeFont instructionFont;
 	ofImage backgroundImg;
@@ -93,15 +103,7 @@ public:
 	bool classic_mode = false;
 	bool dragging_mode = false;
 	float landerLoadedTime = 0;
+	float altitude;
 
 	SpacecraftShape ship;
-
-	void moveUp();
-	void moveDown();
-	void rotateRight();
-	void rotateLeft();
-	void moveRight();
-	void moveLeft();
-	void moveForward();
-	void moveBackwards();
 };
