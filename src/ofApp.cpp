@@ -284,16 +284,19 @@ void ofApp::draw() {
 		string title = "3D LANDER GAME";
 		string instruction1 = "Press E to Start, and Q to quit";
 		string instruction2 = "Use Arrow Keys and AWSD Keys to Move";
+		string instruction3 = "Use T, Y, and C for camera controls.";
 
 		// Measure string widths for centering
 		float titleWidth = titleFont.stringWidth(title);
 		float instr1Width = instructionFont.stringWidth(instruction1);
 		float instr2Width = instructionFont.stringWidth(instruction2);
+		float instr3Width = instructionFont.stringWidth(instruction3);
 
 		// Draw centered
 		titleFont.drawString(title, centerX - titleWidth / 2, 200);
 		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
 		instructionFont.drawString(instruction2, centerX - instr2Width / 2, 400);
+		instructionFont.drawString(instruction3, centerX - instr3Width / 2, 500);
 	}
 	else if (restart && !dragging_mode && !classic_mode) {
 
