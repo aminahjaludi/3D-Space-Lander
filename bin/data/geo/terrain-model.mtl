@@ -1,0 +1,13 @@
+newmtl lambert2SG
+illum 4
+Kd 0.00 0.00 0.12
+Ka 0.00 0.00 0.00
+Tf 0.89 0.89 0.89
+Ni 1.00
+newmtl lambert3SG1
+illum 4
+Kd 0.76 0.78 0.76
+Ka 0.20 0.20 0.20
+Tf 1.00 1.00 1.00
+map_Kd Mercury-texture.jpg
+Ni 1.00

@@ -12,12 +12,13 @@
 // setup scene, lighting, state and load geometry
 //
 void ofApp::setup() {
+
 	bWireframe = false;
 	bDisplayPoints = false;
 	bLanderLoaded = false;
 	bTerrainSelected = true;
 
-	cam.setDistance(10);
+	cam.setDistance(30);
 	cam.setNearClip(.1);
 	cam.setFov(65.5);
 	ofSetVerticalSync(true);
@@ -28,7 +29,7 @@ void ofApp::setup() {
 	// setup rudimentary lighting 
 	initLightingAndMaterials();
 
-	mars.loadModel("geo/moon-houdini.obj");
+	mars.loadModel("geo/terrain-model.obj");
 	mars.setScaleNormalization(false);
 
 	titleFont.load("Sen-Bold.ttf", 64);
@@ -848,10 +849,10 @@ void ofApp::setUpClassicMode() {
 	if (restart && classic_mode) {
 		bLanderLoaded = true;
 		lander.setScaleNormalization(false);
-		lander.loadModel("geo/lander.obj");
+		lander.loadModel("geo/atlantis-orbiter.obj");
 
 		lander.setPosition(0, 0, 0);
-
+		
 		bboxList.clear();
 		for (int i = 0; i < lander.getMeshCount(); i++) {
 			bboxList.push_back(Octree::meshBounds(lander.getMesh(i)));

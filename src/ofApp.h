@@ -6,6 +6,7 @@
 #include "Octree.h"
 #include "glm/gtx/intersect.hpp"
 #include "../SpacecraftShape.h"
+#include "ParticleEmitter.h"
 
 class ofApp : public ofBaseApp {
 
@@ -104,4 +105,16 @@ public:
 	void moveLeft();
 	void moveForward();
 	void moveBackwards();
+	void loadVbo();			//vertex buffer
+
+	ParticleEmitter exhaustemitter;
+
+	float exhausttimer;
+
+	// textures
+	ofTexture  particleTex;
+
+	// shaders
+	ofVbo vbo;
+	ofShader shader;
 };
