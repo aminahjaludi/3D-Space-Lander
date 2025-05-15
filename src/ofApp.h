@@ -43,7 +43,7 @@ public:
 	void moveLeft();
 	void moveForward();
 	void moveBackwards();
-
+	bool checkLanding();
 	void loadVbo();			//vertex buffer
 
 	ParticleEmitter exhaustemitter;
@@ -104,4 +104,6 @@ public:
 	bool classic_mode = false;
 	bool dragging_mode = false;
 	bool lost = false;
+	bool won = false;
+	bool disableDragging = false;
 };
