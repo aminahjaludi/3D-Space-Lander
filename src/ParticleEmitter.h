@@ -25,14 +25,22 @@ public:
 	void setEmitterType(EmitterType t) { type = t; }
 	void setGroupSize(int s) { groupSize = s; }
 	void setOneShot(bool s) { oneShot = s; }
+	void setRandomLife(bool b) { randomLife = b; }
+	void setLifespanRange(const ofVec2f& r) { lifeMinMax = r; }
+	void setMass(float m) { mass = m; }
+	void setDamping(float d) { damping = d; }
 	void update();
 	void spawn(float time);
 	ParticleSystem* sys;
 	float rate;         // per sec
 	bool oneShot;
 	bool fired;
+	bool randomLife;
+	ofVec3f lifeMinMax;
 	ofVec3f velocity;
 	float lifespan;     // sec
+	float mass;
+	float damping;
 	bool started;
 	float lastSpawned;  // ms
 	float particleRadius;
@@ -72,15 +80,19 @@ void ParticleEmitter::init() {
 	rate = 1;
 	velocity = ofVec3f(0, 20, 0);
 	lifespan = 3;
+	mass = 1;
+	randomLife = false;
+	lifeMinMax = ofVec3f(2, 4);
 	started = false;
 	oneShot = false;
 	fired = false;
 	lastSpawned = 0;
-	radius = 0.1;
-	particleRadius = .1;
+	radius = 1;
+	particleRadius = 10;
 	visible = true;
-	type = DiskEmitter;
+	type = DirectionalEmitter;
 	groupSize = 1;
+	damping = .99;
 }
 
 
@@ -158,7 +170,7 @@ void ParticleEmitter::spawn(float time) {
 		//use unit circle measurements for the angle and radius offset
 		float randangle = ofRandom(0, TWO_PI);
 		//create a random value for the radius offset for the x component and z component
-		float randradiusOffset = ofRandom(0, radius * 3);
+		float randradiusOffset = ofRandom(0, radius * 4);
 
 		//calculate the x y and z components of the particle's position
 		float x = cos(randangle) * randradiusOffset;
@@ -192,11 +204,14 @@ void ParticleEmitter::spawn(float time) {
 
 	}
 
-	// other particle attributes
-	//
-	particle.lifespan = lifespan;
+	if (randomLife) {
+		particle.lifespan = ofRandom(lifeMinMax.x, lifeMinMax.y);
+	}
+	else particle.lifespan = lifespan;
 	particle.birthtime = time;
 	particle.radius = particleRadius;
+	particle.mass = mass;
+	particle.damping = damping;
 
 	// add to system
 	//

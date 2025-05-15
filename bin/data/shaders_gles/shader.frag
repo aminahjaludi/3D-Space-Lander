@@ -16,5 +16,5 @@ void main() {
     // Interpolate color based on life ratio
     vec3 explosionColor = mix(startColor, endColor, vLifeRatio);
 
-    fragColor = texColor * vec4(explosionColor, 1.0) * vColor;
+    fragColor = texColor * vec4(explosionColor, 1.0);
 }

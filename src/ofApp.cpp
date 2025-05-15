@@ -21,6 +21,8 @@ void ofApp::setup() {
 	ofEnableSmoothing();
 	ofEnableDepthTest();
 
+
+
 	// setup rudimentary lighting 
 	initLightingAndMaterials();
 
@@ -51,6 +53,58 @@ void ofApp::setup() {
 	levelColors.push_back(ofColor::magenta);
 	levelColors.push_back(ofColor::limeGreen);
 	levelColors.push_back(ofColor::pink);
+
+	ofDisableArbTex();     // disable rectangular textures
+
+	// load textures
+	//
+	if (!ofLoadImage(particleTex, "images/nova_0.png")) {
+		cout << "Particle Texture File: images/dot.png not found" << endl;
+		ofExit();
+	}
+
+	// load the shader
+	//
+#ifdef TARGET_OPENGLES
+	shader.load("shaders_gles/shader");
+#else
+	shader.load("shaders/shader");
+#endif
+
+
+	exhaustemitter.setEmitterType(DiskEmitter);
+	exhaustemitter.setPosition(ofVec3f(0, 0, 0));  // Set position (adjust as needed)
+	exhaustemitter.setLifespan(1);  // Set particle lifespan
+	//exhaustemitter.setRate(70);  // Particles per second
+	//exhaustemitter.setGroupSize(30);  // Number of particles emitted per update
+	exhaustemitter.setRate(200);  // Particles per second
+	exhaustemitter.setGroupSize(100);  // Number of particles emitted per update
+	exhaustemitter.setVelocity(ofVec3f(0, 2, 0));  // Set velocity
+	//exhaustemitter.setParticleRadius(0.04);  // Particle size
+	exhaustemitter.setParticleRadius(10);
+}
+
+// load vertex buffer in preparation for rendering
+//
+void ofApp::loadVbo() {
+	if (exhaustemitter.sys->particles.size() < 1) return;
+
+	vector<ofVec3f> sizes;
+	vector<ofVec3f> points;
+	vector<float> lifeRatios;
+	for (auto& particle : exhaustemitter.sys->particles) {
+		points.push_back(particle.position);
+		sizes.push_back(ofVec3f(particle.radius));
+		float ratio = particle.age() / particle.lifespan;
+		lifeRatios.push_back(ratio);
+	}
+	// upload the data to the vbo
+	//
+	int total = (int)points.size();
+	vbo.clear();
+	vbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
+	vbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
+	vbo.setAttributeData(3, &lifeRatios[0], 1, lifeRatios.size(), GL_STATIC_DRAW);
 }
 
 //--------------------------------------------------------------
@@ -58,6 +112,19 @@ void ofApp::setup() {
 void ofApp::update() {
 	if (restart) {
 		if (bLanderLoaded) {
+			if (exhaustemitter.started)
+			{
+				float elapsedtime = ofGetElapsedTimeMillis() - exhausttimer;
+
+				//if elapsedtime is greater than half a second stop the exhaust
+				if (elapsedtime > 500) {
+					exhaustemitter.stop();
+				}
+			}
+			float x_land = lander.getPosition().x;
+			float y_land = lander.getPosition().y;
+			float z_land = lander.getPosition().z;
+			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
 			//cout << lander.getPosition() << endl;
 			checkCollision();
 
@@ -96,6 +163,7 @@ void ofApp::update() {
 
 				applyExternalForces();
 				ship.integrator();
+				exhaustemitter.update();
 
 				lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
 				lander.setRotation(0, ship.rot, 0, 1, 0);
@@ -108,12 +176,15 @@ void ofApp::update() {
 		bLanderLoaded = false;
 		bCollisionDetected = false;
 	}
+
+	
 }
 
 //--------------------------------------------------------------
 
 void ofApp::draw() {
 
+	loadVbo();
 	ofBackground(ofColor::black);
 
 	// Get window center
@@ -187,8 +258,39 @@ void ofApp::draw() {
 			ofSetColor(ofColor::white);
 			ofDrawBitmapString(altitude_str, x, y);
 		}
-		cam.begin();
+	
+		// this makes everything look glowy :)
+		//
+		ofEnableBlendMode(OF_BLENDMODE_ADD);
+		ofEnablePointSprites();
 
+
+		// begin drawing in the camera
+		//
+		shader.begin();
+		//shader.setUniformTexture("tex", particleTex, 0); 
+		shader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
+		cam.begin();
+		particleTex.bind();
+		vbo.draw(GL_POINTS, 0, (int)exhaustemitter.sys->particles.size());
+		//exhaustemitter.draw();
+		particleTex.unbind();
+		cam.end();
+		shader.end();
+	/*	if (exhaustemitter.sys->particles.size() == 0) {
+			cout<< "No exhaust particles available.";
+		}
+		else {
+			cout << "Rendering " << exhaustemitter.sys->particles.size() << " exhaust particles.";
+		}*/
+
+
+		ofDisablePointSprites();
+		ofDisableBlendMode();
+		ofEnableAlphaBlending();
+	
+
+		cam.begin();
 		ofPushMatrix();
 
 		ofEnableLighting(); // shaded mode
@@ -196,7 +298,7 @@ void ofApp::draw() {
 		ofMesh mesh;
 		if (bLanderLoaded) {
 			lander.drawFaces();
-
+			
 			if (bLanderSelected) {
 				ofVec3f min = lander.getSceneMin() + lander.getPosition();
 				ofVec3f max = lander.getSceneMax() + lander.getPosition();
@@ -261,6 +363,9 @@ void ofApp::keyPressed(int key) {
 	case 'w':
 	case 'W':
 		w_pressed = true;
+		exhaustemitter.sys->reset();
+		exhaustemitter.start();
+		exhausttimer = ofGetElapsedTimeMillis();
 		break;
 	case 's':
 	case 'S':

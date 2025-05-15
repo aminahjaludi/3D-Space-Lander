@@ -33,14 +33,14 @@ Particle::Particle() {
 	forces.set(0, 0, 0);
 	lifespan = 5;
 	birthtime = 0;
-	radius = .1;
+	radius = 2;
 	damping = .99;
 	mass = 1;
-	color = ofColor::red;
+	color = ofColor::aquamarine;
 }
 
 void Particle::draw() {
-	//ofSetColor(ofMap(age(), 0, lifespan, 255, 10), color.a, color.b);
+	//ofSetColor(ofMap(age(), 0, lifespan, 255, 10), 0, 0);
 	ofSetColor(color);
 	ofDrawSphere(position, radius);
 }

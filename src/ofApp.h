@@ -7,6 +7,7 @@
 #include "glm/gtx/intersect.hpp"
 #include "../SpacecraftShape.h"
 #include "ParticleEmitter.h"
+#include "ParticleSystem.h"
 
 class ofApp : public ofBaseApp {
 
