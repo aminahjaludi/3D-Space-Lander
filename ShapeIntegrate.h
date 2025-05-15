@@ -22,6 +22,8 @@ public:
 
     glm::vec3 torque = glm::vec3(0, 0, 0);
     glm::vec3 force = glm::vec3(0, 0, 0);
+
+    glm::vec3 prev_force = glm::vec3(0, 0, 0);
 };
 
 
@@ -51,6 +53,8 @@ void ShapeIntegrate::integrator() {
 
     //Calculate acceleration (newton's law)
     accel = force / mass;
+
+    prev_force = force;
 
     //Reset torque and force
     torque = glm::vec3(0, 0, 0);

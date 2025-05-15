@@ -16,6 +16,7 @@ SpacecraftShape::SpacecraftShape() {
 	accel = glm::vec3(0, 0, 0);
 	linear_damping = 0.97;
 	angular_damping = 0.95;
+	prev_force = glm::vec3(0, 0, 0);
 	points.resize(3);
 }
 

@@ -88,4 +88,5 @@ public:
 	bool restart = false;
 	bool classic_mode = false;
 	bool dragging_mode = false;
+	bool lost = false;
 };
