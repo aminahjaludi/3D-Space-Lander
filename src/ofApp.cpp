@@ -16,12 +16,30 @@ void ofApp::setup() {
 	cam.setNearClip(.1);
 	cam.setFov(65.5);
 	
+	followCam.setPosition(cameraPosition);
+
+	fixedCam1.setNearClip(0.1);
+	fixedCam1.setFarClip(1000);
+	fixedCam2.setNearClip(0.1);
+	fixedCam2.setFarClip(1000);
+	fixedCam3.setNearClip(0.1);
+	fixedCam3.setFarClip(1000);
+
 	ofSetVerticalSync(true);
 	cam.disableMouseInput();
 	ofEnableSmoothing();
 	ofEnableDepthTest();
 
+	currentCam = &cam;
 
+	ambient.load("ambient.mp3");
+	ambient.setVolume(0.7);
+	ambient.setLoop(true);
+	ambient.play();
+
+	thrust.load("thrust.wav");
+	thrust.setVolume(0.2);
+	thrust.setLoop(false);
 
 	// setup rudimentary lighting 
 	initLightingAndMaterials();
@@ -122,11 +140,26 @@ void ofApp::update() {
 					exhaustemitter.stop();
 				}
 			}
+			glm::vec3 landerPos = lander.getPosition();
 			float x_land = lander.getPosition().x;
 			float y_land = lander.getPosition().y;
 			float z_land = lander.getPosition().z;
 			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
 			
+			followCam.lookAt(lander.getPosition());
+
+			// 1. Top-down cam (above lander, facing down)
+			fixedCam1.setPosition(landerPos + glm::vec3(0, 0, 0));  // 100 units above
+			fixedCam1.lookAt(fixedCam1.getPosition() + glm::vec3(0, -1, 0));  // look straight down
+
+			// 2. Forward-facing cam (behind lander, looking forward along -Z)
+			fixedCam2.setPosition(landerPos + glm::vec3(0, 10, 0));  // behind and slightly above
+			fixedCam2.lookAt(fixedCam2.getPosition() + glm::vec3(0, 0, -1));  // look forward
+
+			// 3. Angled cam (above + behind, looking diagonally down-forward)
+			fixedCam3.setPosition(landerPos + glm::vec3(5, 5, 1));  // above-right-behind
+			fixedCam3.lookAt(fixedCam3.getPosition() + glm::normalize(glm::vec3(0, -0.5, -1)));  // angled
+
 			checkCollision();
 
 			if (bCollisionDetected) {
@@ -145,9 +178,11 @@ void ofApp::update() {
 			if (!lost && fuel > 0) {
 				if (w_pressed) {
 					moveUp();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (s_pressed) {
 					moveDown();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (d_pressed) {
 					rotateRight();
@@ -157,15 +192,19 @@ void ofApp::update() {
 				}
 				if (up_pressed) {
 					moveBackwards();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (down_pressed) {
 					moveForward();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (right_pressed) {
 					moveRight();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (left_pressed) {
 					moveLeft();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 			}
 			applyExternalForces();
@@ -322,32 +361,25 @@ void ofApp::draw() {
 		shader.begin();
 
 		shader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
-		cam.begin();
+		currentCam->begin();
 		particleTex.bind();
 		vbo.draw(GL_POINTS, 0, (int)exhaustemitter.sys->particles.size());
-		//exhaustemitter.draw();
+		
 		particleTex.unbind();
-		cam.end();
+		currentCam->end();
 		shader.end();
-	/*	if (exhaustemitter.sys->particles.size() == 0) {
-			cout<< "No exhaust particles available.";
-		}
-		else {
-			cout << "Rendering " << exhaustemitter.sys->particles.size() << " exhaust particles.";
-		}*/
 
 		ofDisablePointSprites();
 		ofDisableBlendMode();
 		ofEnableAlphaBlending();
 	
-
-		cam.begin();
+		currentCam->begin();
 		ofPushMatrix();
 
 		ofEnableLighting(); // shaded mode
 		mars.drawFaces();
 		ofMesh mesh;
-		if (bLanderLoaded) {
+		if (bLanderLoaded && (currentCam == &followCam || currentCam == &cam)) {
 			lander.drawFaces();
 			
 			if (bLanderSelected) {
@@ -363,7 +395,7 @@ void ofApp::draw() {
 		
 		ofDisableLighting();
 		ofPopMatrix();
-		cam.end();
+		currentCam->end();
 	}
 
 }
@@ -461,8 +493,31 @@ void ofApp::keyPressed(int key) {
 	case 'r':
 		cam.reset();
 		break;
+	case 'T':
 	case 't':
-		setCameraTarget();
+		if (currentCam == &cam)
+		{
+			currentCam = &followCam;
+		}
+		else
+		{
+			currentCam = &cam;
+		}
+		break;
+	case 'Y':
+	case 'y':
+		if (currentCam == &fixedCam1)
+		{
+			currentCam = &fixedCam2;
+		}
+		else if (currentCam == &fixedCam2)
+		{
+			currentCam = &fixedCam3;
+		}
+		else
+		{
+			currentCam = &fixedCam1;
+		}
 		break;
 	case OF_KEY_ALT:
 		cam.enableMouseInput();
@@ -552,12 +607,40 @@ void ofApp::mousePressed(int x, int y, int button) {
 		if (hit) {
 			bLanderSelected = true;
 			mouseDownPos = getMousePointOnPlane(lander.getPosition(), cam.getZAxis());
+			cam.lookAt(lander.getPosition());
 			bInDrag = true;
 		}
 		else {
 			bLanderSelected = false;
 		}
+
+		bool octHit = raySelectWithOctree(selectedPoint); // ADDED
+		if (octHit)
+		{
+			selectPos.x = selectedPoint.x;
+			selectPos.y = selectedPoint.y;
+			selectPos.z = selectedPoint.z;
+			cam.lookAt(selectPos);
+		}
 	}
+}
+
+//--------------------------------------------------------------
+
+bool ofApp::raySelectWithOctree(ofVec3f& pointRet) {
+	ofVec3f mouse(mouseX, mouseY);
+	ofVec3f rayPoint = cam.screenToWorld(mouse);
+	ofVec3f rayDir = rayPoint - cam.getPosition();
+	rayDir.normalize();
+	Ray ray = Ray(Vector3(rayPoint.x, rayPoint.y, rayPoint.z),
+		Vector3(rayDir.x, rayDir.y, rayDir.z));
+
+	pointSelected = octree.intersect(ray, octree.root, selectedNode);
+
+	if (pointSelected) {
+		pointRet = octree.mesh.getVertex(selectedNode.points[0]);
+	}
+	return pointSelected;
 }
 
 //--------------------------------------------------------------
@@ -600,13 +683,6 @@ void ofApp::mouseDragged(int x, int y, int button) {
 
 void ofApp::mouseReleased(int x, int y, int button) {
 	bInDrag = false;
-}
-
-//--------------------------------------------------------------
-
-// Set the camera to use the selected point as it's new target
-void ofApp::setCameraTarget() {
-
 }
 
 //--------------------------------------------------------------
