@@ -7,20 +7,15 @@
 
 #include "ofApp.h"
 #include "Util.h"
+#include <sstream>
+#include <iomanip>
 
-//--------------------------------------------------------------
-// setup scene, lighting, state and load geometry
-//
 void ofApp::setup() {
-
-	bWireframe = false;
-	bDisplayPoints = false;
-	bLanderLoaded = false;
-	bTerrainSelected = true;
-
-	cam.setDistance(30);
+	//Setup camera
+	cam.setDistance(10);
 	cam.setNearClip(.1);
 	cam.setFov(65.5);
+	
 	ofSetVerticalSync(true);
 	cam.disableMouseInput();
 	ofEnableSmoothing();
@@ -36,13 +31,10 @@ void ofApp::setup() {
 	instructionFont.load("Sen-Regular.ttf", 24);
 	backgroundImg.load("background.jpg");
 
-	// create sliders for testing
+	//Create sliders for testing
 	gui.setup();
-	//gui.add(numLevels.setup("Num of Octree Lvls", 1, 1, 10));
-	//gui.add(bTimingInfo.setup("Timing Info", false));;
+	gui.add(altitude_toggle.setup("Altitude Info", false));;
 	bHide = false;
-
-	
 
 	//create Octree for testing
 	octree.create(mars.getMesh(0), 20);;
@@ -62,62 +54,54 @@ void ofApp::setup() {
 }
 
 //--------------------------------------------------------------
-// incrementally update scene (animation)
+
 void ofApp::update() {
 	if (restart) {
 		if (bLanderLoaded) {
+			//cout << lander.getPosition() << endl;
+			checkCollision();
+
+			if (bCollisionDetected) {
+				resolveCollision();
+			}
+
+			calculateAltitude();
+
 			//Move lander in accordance to key pressed
-			if (w_pressed) {
-				moveUp();
-			}
-			if (s_pressed) {
-				moveDown();
-			}
-			if (d_pressed) {
-				rotateRight();
-			}
-			if (a_pressed) {
-				rotateLeft();
-			}
-			if (up_pressed) {
-				moveBackwards();
-			}
-			if (down_pressed) {
-				moveForward();
-			}
-			if (right_pressed) {
-				moveRight();
-			}
-			if (left_pressed) {
-				moveLeft();
-			}
-
-			if (!bInDrag) {
-
-				//Moon gravity (approx. 1.62 downward)
-				glm::vec3 moonGravity = glm::vec3(0, -1.62f * ship.mass, 0);
-				ship.addForce(moonGravity);
-
-				if ((ofGetElapsedTimef() - landerLoadedTime > 2.0f)) {
-					glm::vec3 turbulenceForce(
-						ofRandom(-5.0f, 5.0f),
-						ofRandom(-5.0f, 5.0f),
-						ofRandom(-5.0f, 5.0f)
-					);
-
-					ship.addForce(turbulenceForce);
+			//if (altitude > 0) {
+				if (w_pressed) {
+					moveUp();
 				}
+				if (s_pressed) {
+					moveDown();
+				}
+				if (d_pressed) {
+					rotateRight();
+				}
+				if (a_pressed) {
+					rotateLeft();
+				}
+				if (up_pressed) {
+					moveBackwards();
+				}
+				if (down_pressed) {
+					moveForward();
+				}
+				if (right_pressed) {
+					moveRight();
+				}
+				if (left_pressed) {
+					moveLeft();
+				}
+
+				applyExternalForces();
+				ship.integrator();
+
+				lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
+				lander.setRotation(0, ship.rot, 0, 1, 0);
 			}
-
-			ship.integrator();
-			lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
-			lander.setRotation(0, ship.rot, 0, 1, 0);
-		}
-		checkCollision();
-
-		if (bCollisionDetected) {
-			resolveCollision();
-		}
+			
+		//}
 	}
 	else {
 		lander.clear();
@@ -127,6 +111,7 @@ void ofApp::update() {
 }
 
 //--------------------------------------------------------------
+
 void ofApp::draw() {
 
 	ofBackground(ofColor::black);
@@ -134,7 +119,22 @@ void ofApp::draw() {
 	// Get window center
 	float centerX = ofGetWidth() / 2.0;
 
-	if (!restart) {
+	if (lost && ofGetElapsedTimef() >= 1.5) {
+		ofDisableLighting();
+		ofSetColor(255);  // white text
+
+		string title = "GAME OVER";
+		string instruction1 = "Press Q to quit to Main Menu";
+
+		// Measure string widths for centering
+		float titleWidth = titleFont.stringWidth(title);
+		float instr1Width = instructionFont.stringWidth(instruction1);
+
+		// Draw centered
+		titleFont.drawString(title, centerX - titleWidth / 2, 200);
+		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+	}
+	else if (!restart) {
 		ofDisableLighting();
 		ofBackground(20); // dark background
 		ofSetColor(255);  // white text
@@ -177,120 +177,45 @@ void ofApp::draw() {
 		
 		glDepthMask(true);
 
-		cam.begin();
+		if (altitude_toggle) {
+			ostringstream oss;
+			oss << fixed << setprecision(1) << "Altitude is " << altitude;
+			string altitude_str = oss.str();
 
-		//octree.draw(numLevels, 0, levelColors);
+			float x = ofGetWidth() - 140;
+			float y = 20;
+			ofSetColor(ofColor::white);
+			ofDrawBitmapString(altitude_str, x, y);
+		}
+		cam.begin();
 
 		ofPushMatrix();
 
-		if (bWireframe) { // wireframe mode  (include axis)
-			ofDisableLighting();
-			ofSetColor(ofColor::slateGray);
-			mars.drawWireframe();
+		ofEnableLighting(); // shaded mode
+		mars.drawFaces();
+		ofMesh mesh;
+		if (bLanderLoaded) {
+			lander.drawFaces();
 
-			if (bLanderLoaded) {
-				lander.drawWireframe();
-				if (!bTerrainSelected) drawAxis(lander.getPosition());
+			if (bLanderSelected) {
+				ofVec3f min = lander.getSceneMin() + lander.getPosition();
+				ofVec3f max = lander.getSceneMax() + lander.getPosition();
+
+				Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+				ofSetColor(ofColor::white);
+				Octree::drawBox(bounds);
 			}
-			if (bTerrainSelected) drawAxis(ofVec3f(0, 0, 0));
-		}
-		else {
-			ofEnableLighting(); // shaded mode
-			mars.drawFaces();
-			ofMesh mesh;
-			if (bLanderLoaded) {
-
-				lander.drawFaces();
-				if (!bTerrainSelected) drawAxis(lander.getPosition());
-				if (bDisplayBBoxes) {
-					ofNoFill();
-					ofSetColor(ofColor::white);
-					for (int i = 0; i < lander.getNumMeshes(); i++) {
-						ofPushMatrix();
-						ofMultMatrix(lander.getModelMatrix());
-						ofRotate(-90, 1, 0, 0);
-						Octree::drawBox(bboxList[i]);
-						ofPopMatrix();
-					}
-				}
-
-				if (bLanderSelected) {
-
-					ofVec3f min = lander.getSceneMin() + lander.getPosition();
-					ofVec3f max = lander.getSceneMax() + lander.getPosition();
-
-					Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
-					ofSetColor(ofColor::white);
-					Octree::drawBox(bounds);
-
-					// draw colliding boxes
-					ofSetColor(ofColor::mediumPurple);
-					for (int i = 0; i < colBoxList.size(); i++) {
-						Octree::drawBox(colBoxList[i]);
-					}
-				}
-				ship.draw();
-			}
-		}
-		if (bTerrainSelected) drawAxis(ofVec3f(0, 0, 0));
-
-		if (bDisplayPoints) { // display points as an option    
-			glPointSize(3);
-			ofSetColor(ofColor::green);
-			mars.drawVertices();
-		}
-
-		// recursively draw octree1
-		ofDisableLighting();
-		int level = 0;
-
-		if (bDisplayLeafNodes) {
-			octree.drawLeafNodes(octree.root);
-			cout << "num leaf: " << octree.numLeaf << endl;
+			ship.draw();
 		}
 		
-		/*else if (bDisplayOctree) {
-			ofNoFill();
-			ofSetColor(ofColor::white);
-			octree.draw(numLevels, 0, levelColors);
-		}*/
-
-		// draw colliding (leaf) boxes
-		ofSetColor(ofColor::mediumPurple);
-		for (int i = 0; i < colBoxList.size(); i++) {
-			Octree::drawBox(colBoxList[i]);
-		}
-
+		ofDisableLighting();
 		ofPopMatrix();
 		cam.end();
-		
 	}
 
 }
 
-// Draw an XYZ axis in RGB at world (0,0,0) for reference.
-void ofApp::drawAxis(ofVec3f location) {
-
-	ofPushMatrix();
-	ofTranslate(location);
-
-	ofSetLineWidth(1.0);
-
-	// X Axis
-	ofSetColor(ofColor(255, 0, 0));
-	ofDrawLine(ofPoint(0, 0, 0), ofPoint(1, 0, 0));
-
-
-	// Y Axis
-	ofSetColor(ofColor(0, 255, 0));
-	ofDrawLine(ofPoint(0, 0, 0), ofPoint(0, 1, 0));
-
-	// Z Axis
-	ofSetColor(ofColor(0, 0, 255));
-	ofDrawLine(ofPoint(0, 0, 0), ofPoint(0, 0, 1));
-
-	ofPopMatrix();
-}
+//--------------------------------------------------------------
 
 void ofApp::keyPressed(int key) {
 
@@ -310,6 +235,7 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'q':
 	case 'Q':
+		lost = false;
 		quit = true;
 		restart = false;
 		classic_mode = false;
@@ -348,10 +274,6 @@ void ofApp::keyPressed(int key) {
 	case 'A':
 		a_pressed = true;
 		break;
-	case 'B':
-	case 'b':
-		bDisplayBBoxes = !bDisplayBBoxes;
-		break;
 	case 'C':
 	case 'c':
 		if (cam.getMouseInputEnabled()) cam.disableMouseInput();
@@ -361,29 +283,11 @@ void ofApp::keyPressed(int key) {
 	case 'f':
 		ofToggleFullscreen();
 		break;
-	case 'L':
-	case 'l':
-		bDisplayLeafNodes = !bDisplayLeafNodes;
-		break;
-	case 'O':
-	case 'o':
-		bDisplayOctree = !bDisplayOctree;
-		break;
 	case 'r':
 		cam.reset();
 		break;
-	//case 's':
-		//savePicture();
-		break;
 	case 't':
 		setCameraTarget();
-		break;
-	case 'v':
-	case 'V':
-		togglePointsDisplay();
-		break;
-	//case 'w':
-		//toggleWireframeMode();
 		break;
 	case OF_KEY_ALT:
 		cam.enableMouseInput();
@@ -393,17 +297,7 @@ void ofApp::keyPressed(int key) {
 	}
 }
 
-void ofApp::toggleWireframeMode() {
-	bWireframe = !bWireframe;
-}
-
-void ofApp::toggleSelectTerrain() {
-	bTerrainSelected = !bTerrainSelected;
-}
-
-void ofApp::togglePointsDisplay() {
-	bDisplayPoints = !bDisplayPoints;
-}
+//--------------------------------------------------------------
 
 void ofApp::keyReleased(int key) {
 
@@ -439,6 +333,12 @@ void ofApp::keyReleased(int key) {
 	case OF_KEY_ALT:
 		cam.disableMouseInput();
 		break;
+	case ' ':
+		/*cout << "distance: " << cam.getDistance() << endl;
+		cout << "pos: " << cam.getPosition() << endl;
+		cout << "global pos: " << cam.getGlobalPosition() << endl;
+		cout << "global ori: " << cam.getGlobalOrientation() << endl;*/
+		break;
 	default:
 		break;
 	}
@@ -456,15 +356,12 @@ void ofApp::mouseMoved(int x, int y) {
 void ofApp::mousePressed(int x, int y, int button) {
 
 	// if moving camera, don't allow mouse interaction
-	//
 	if (cam.getMouseInputEnabled()) return;
 
 	// if moving camera, don't allow mouse interaction
-//
 	if (cam.getMouseInputEnabled()) return;
 
 	// if rover is loaded, test for selection
-	//
 	if (bLanderLoaded) {
 		glm::vec3 origin = cam.getPosition();
 		glm::vec3 mouseWorld = cam.screenToWorld(glm::vec3(mouseX, mouseY, 0));
@@ -478,35 +375,12 @@ void ofApp::mousePressed(int x, int y, int button) {
 		if (hit) {
 			bLanderSelected = true;
 			mouseDownPos = getMousePointOnPlane(lander.getPosition(), cam.getZAxis());
-			//mouseLastPos = mouseDownPos;
 			bInDrag = true;
 		}
 		else {
 			bLanderSelected = false;
 		}
 	}
-	else {
-		ofVec3f p;
-		raySelectWithOctree(p);
-	}
-}
-
-//--------------------------------------------------------------
-
-bool ofApp::raySelectWithOctree(ofVec3f& pointRet) {
-	ofVec3f mouse(mouseX, mouseY);
-	ofVec3f rayPoint = cam.screenToWorld(mouse);
-	ofVec3f rayDir = rayPoint - cam.getPosition();
-	rayDir.normalize();
-	Ray ray = Ray(Vector3(rayPoint.x, rayPoint.y, rayPoint.z),
-		Vector3(rayDir.x, rayDir.y, rayDir.z));
-
-	pointSelected = octree.intersect(ray, octree.root, selectedNode);
-
-	if (pointSelected) {
-		pointRet = octree.mesh.getVertex(selectedNode.points[0]);
-	}
-	return pointSelected;
 }
 
 //--------------------------------------------------------------
@@ -522,13 +396,11 @@ void ofApp::mouseDragged(int x, int y, int button) {
 		glm::vec3 landerPos = lander.getPosition();
 
 		glm::vec3 mousePos = getMousePointOnPlane(landerPos, cam.getZAxis());
-		glm::vec3 delta = mousePos - lander.getPosition();//mouseLastPos;
+		glm::vec3 delta = mousePos - lander.getPosition();
 
 		landerPos += delta;
 		lander.setPosition(landerPos.x, landerPos.y, landerPos.z);
 		ship.pos = lander.getPosition();
-
-		//mouseLastPos = mousePos;
 
 		ofVec3f min = lander.getSceneMin() + lander.getPosition();
 		ofVec3f max = lander.getSceneMax() + lander.getPosition();
@@ -544,10 +416,6 @@ void ofApp::mouseDragged(int x, int y, int button) {
 		else {
 			bCollisionDetected = false;
 		}
-	}
-	else {
-		ofVec3f p;
-		raySelectWithOctree(p);
 	}
 }
 
@@ -628,25 +496,6 @@ void ofApp::initLightingAndMaterials() {
 
 //--------------------------------------------------------------
 
-void ofApp::savePicture() {
-	ofImage picture;
-	picture.grabScreen(0, 0, ofGetWidth(), ofGetHeight());
-	picture.save("screenshot.png");
-	cout << "picture saved" << endl;
-}
-
-//--------------------------------------------------------------
-
-bool ofApp::mouseIntersectPlane(ofVec3f planePoint, ofVec3f planeNorm, ofVec3f& point) {
-	ofVec2f mouse(mouseX, mouseY);
-	ofVec3f rayPoint = cam.screenToWorld(glm::vec3(mouseX, mouseY, 0));
-	ofVec3f rayDir = rayPoint - cam.getPosition();
-	rayDir.normalize();
-	return (rayIntersectPlane(rayPoint, rayDir, planePoint, planeNorm, point));
-}
-
-//--------------------------------------------------------------
-
 // Support drag-and-drop of model (.obj) file loading.  when
 // model is dropped in viewport, place origin under cursor
 void ofApp::dragEvent(ofDragInfo dragInfo) {
@@ -655,19 +504,11 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 			bLanderLoaded = true;
 			lander.setScaleNormalization(false);
 			lander.setPosition(0, 0, 0);
-			cout << "number of meshes: " << lander.getNumMeshes() << endl;
+			//cout << "number of meshes: " << lander.getNumMeshes() << endl;
 			bboxList.clear();
 			for (int i = 0; i < lander.getMeshCount(); i++) {
 				bboxList.push_back(Octree::meshBounds(lander.getMesh(i)));
 			}
-
-
-			// We want to drag and drop a 3D object in space so that the model appears 
-			// under the mouse pointer where you drop it !
-			//
-			// Our strategy: intersect a plane parallel to the camera plane where the mouse drops the model
-			// once we find the point of intersection, we can position the lander/lander
-			// at that location.
 
 			// Setup our rays
 			glm::vec3 origin = cam.getPosition();
@@ -678,15 +519,9 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 
 			bool hit = glm::intersectRayPlane(origin, mouseDir, glm::vec3(0, 0, 0), camAxis, distance);
 			if (hit) {
-				// find the point of intersection on the plane using the distance 
-				// We use the parameteric line or vector representation of a line to compute
-				//
-				// p' = p + s * dir;
-				//
 				glm::vec3 intersectPoint = origin + distance * mouseDir;
 
 				// Now position the lander's origin at that intersection point
-				//
 				glm::vec3 min = lander.getSceneMin();
 				glm::vec3 max = lander.getSceneMax();
 				float offset = (max.y - min.y) / 2.0;
@@ -706,10 +541,9 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 //--------------------------------------------------------------
 
 //  Intersect the mouse ray with the plane normal to the camera 
-//  return intersection point.   (package code above into function)
+//  return intersection point.
 glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
-	// Setup our rays
-	//
+	
 	glm::vec3 origin = cam.getPosition();
 	glm::vec3 camAxis = cam.getZAxis();
 	glm::vec3 mouseWorld = cam.screenToWorld(glm::vec3(mouseX, mouseY, 0));
@@ -719,13 +553,7 @@ glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
 	bool hit = glm::intersectRayPlane(origin, mouseDir, planePt, planeNorm, distance);
 
 	if (hit) {
-		// find the point of intersection on the plane using the distance 
-		// We use the parameteric line or vector representation of a line to compute
-		//
-		// p' = p + s * dir;
-		//
 		glm::vec3 intersectPoint = origin + distance * mouseDir;
-
 		return intersectPoint;
 	}
 	else return glm::vec3(0, 0, 0);
@@ -735,38 +563,47 @@ glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
 
 void ofApp::resolveCollision() {
 
-	//Move lander upwards
-	//glm::vec3 pos = lander.getPosition();
-	//lander.setPosition(pos.x, pos.y + 0.1, pos.z);
-	//ship.pos = lander.getPosition();
-	glm::vec3 impulseForce = glm::vec3(0, 1, 0);  // World up
+	if (ship.prev_force.y < -4 || altitude < 0) {
+		ofResetElapsedTimeCounter();
+		lost = true;
+		glm::vec3 impulseForce = glm::vec3(1, 1, 0);  // World up
 
-	impulseForce *= ship.thrust;
-	ship.velocity += impulseForce * 2;
-	ship.addForce(impulseForce * 2);
+		impulseForce *= ship.thrust;
+		ship.velocity += impulseForce * 700;
+		ship.addForce(impulseForce * 700);
+		ship.integrator();
+	}
+	else {
+		while (colBoxList.size() >= 10) {
+			glm::vec3 impulseForce = glm::vec3(0, 1, 0);  // World up
 
-	ship.integrator();
-	
-	// Update bounding box after moving
-	ofVec3f min = lander.getSceneMin() + lander.getPosition();
-	ofVec3f max = lander.getSceneMax() + lander.getPosition();
-	Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+			impulseForce *= ship.thrust;
+			ship.velocity += impulseForce * 10;
+			ship.addForce(impulseForce * 10);
+			ship.integrator();
 
-	colBoxList.clear();
-	octree.intersect(bounds, octree.root, colBoxList);
+			ofVec3f min = lander.getSceneMin() + lander.getPosition();
+			ofVec3f max = lander.getSceneMax() + lander.getPosition();
+			Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
 
-	if (colBoxList.size() < 10) {
-		bCollisionDetected = false;
+			lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
+			lander.setRotation(0, ship.rot, 0, 1, 0);
+
+			colBoxList.clear();
+			octree.intersect(bounds, octree.root, colBoxList);
+		}
 	}
 }
+
+//--------------------------------------------------------------
 
 void ofApp::moveUp()
 {
 	glm::vec3 thrustForce = glm::vec3(0, 1, 0);  // World up
 
 	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 2;
-	ship.addForce(thrustForce * 2);
+	ship.velocity += thrustForce * 10;
+	ship.addForce(thrustForce * 10);
 }
 
 //--------------------------------------------------------------
@@ -776,8 +613,8 @@ void ofApp::moveDown()
 	glm::vec3 thrustForce = glm::vec3(0, 1, 0);  // World down
 
 	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 2;
-	ship.addForce(-thrustForce * 2);
+	ship.velocity -= thrustForce * 10;
+	ship.addForce(-thrustForce * 10);
 }
 
 //--------------------------------------------------------------
@@ -786,33 +623,41 @@ void ofApp::moveRight() {
 	glm::vec3 thrustForce = glm::vec3(1, 0, 0);
 
 	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 2;
-	ship.addForce(thrustForce * 2);
+	ship.velocity += thrustForce * 10;
+	ship.addForce(thrustForce * 10);
 }
+
+//--------------------------------------------------------------
 
 void ofApp::moveLeft() {
 	glm::vec3 thrustForce = glm::vec3(1, 0, 0);
 
 	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 2;
-	ship.addForce(-thrustForce * 2);
+	ship.velocity -= thrustForce * 10;
+	ship.addForce(-thrustForce * 10);
 }
+
+//--------------------------------------------------------------
 
 void ofApp::moveForward() {
 	glm::vec3 thrustForce = glm::vec3(0, 0, 1);
 
 	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 2;
-	ship.addForce(thrustForce * 2);
+	ship.velocity += thrustForce * 10;
+	ship.addForce(thrustForce * 10);
 }
+
+//--------------------------------------------------------------
 
 void ofApp::moveBackwards() {
 	glm::vec3 thrustForce = glm::vec3(0, 0, 1);
 
 	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 2;
-	ship.addForce(-thrustForce * 2);
+	ship.velocity -= thrustForce * 10;
+	ship.addForce(-thrustForce * 10);
 }
+
+//--------------------------------------------------------------
 
 //Adds positive torque to rotate the player right
 void ofApp::rotateRight()
@@ -828,6 +673,8 @@ void ofApp::rotateLeft()
 	ship.addTorque(glm::vec3(0, 0, -1000));
 }
 
+//--------------------------------------------------------------
+
 void ofApp::checkCollision() {
 	ofVec3f min = lander.getSceneMin() + lander.getPosition();
 	ofVec3f max = lander.getSceneMax() + lander.getPosition();
@@ -837,7 +684,7 @@ void ofApp::checkCollision() {
 	colBoxList.clear();
 	octree.intersect(bounds, octree.root, colBoxList);
 
-	if (colBoxList.size() >= 10) {
+	if (colBoxList.size() >= 10 && !bCollisionDetected) {
 		bCollisionDetected = true;
 	}
 	else {
@@ -845,14 +692,17 @@ void ofApp::checkCollision() {
 	}
 }
 
+//--------------------------------------------------------------
+
 void ofApp::setUpClassicMode() {
 	if (restart && classic_mode) {
 		bLanderLoaded = true;
 		lander.setScaleNormalization(false);
 		lander.loadModel("geo/atlantis-orbiter.obj");
 
-		lander.setPosition(0, 0, 0);
-		
+		//lander.setPosition(0, 0, 0);
+		lander.setPosition(0, 133, 0);
+
 		bboxList.clear();
 		for (int i = 0; i < lander.getMeshCount(); i++) {
 			bboxList.push_back(Octree::meshBounds(lander.getMesh(i)));
@@ -861,12 +711,57 @@ void ofApp::setUpClassicMode() {
 		glm::vec3 min = lander.getSceneMin();
 		glm::vec3 max = lander.getSceneMax();
 		
-		lander.setPosition(cam.getPosition().x, cam.getPosition().y + 10, cam.getPosition().z - 20);
+		//lander.setPosition(cam.getPosition().x, cam.getPosition().y + 10, cam.getPosition().z - 20);
 
 		ship.pos = lander.getPosition();
 		ship.scale = glm::vec3(0.1, 0.2, 0.1);
 
 		// set up bounding box for lander while we are at it
 		landerBounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+	}
+}
+
+//--------------------------------------------------------------
+
+void ofApp::calculateAltitude() {
+	//if (altitude_toggle) {
+		ofVec3f min = lander.getSceneMin() + lander.getPosition();
+		ofVec3f max = lander.getSceneMax() + lander.getPosition();
+		Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+
+		Vector3 bottomCenter(
+			(bounds.min().x() + bounds.max().x()) / 2.0f,   // center in X
+			bounds.min().y(),								// bottom in Y
+			(bounds.min().z() + bounds.max().z()) / 2.0f    // center in Z
+		);
+
+		TreeNode leaf;
+		Ray ray = Ray(bottomCenter, Vector3(0, -1, 0));
+
+		bool intersected = octree.intersect(ray, octree.root, leaf);
+
+		if (intersected) {
+			ofDefaultVertexType vert = octree.mesh.getVertex(leaf.points[0]);
+			altitude = bottomCenter.y() - vert.y;
+		}
+	//}
+}
+
+//--------------------------------------------------------------
+
+void ofApp::applyExternalForces() {
+	if (!bInDrag) {
+		glm::vec3 moonGravity = glm::vec3(0, -1.62f * ship.mass, 0);
+		ship.addForce(moonGravity);
+
+		if ((ofGetElapsedTimef() > 2.0f)) {
+			glm::vec3 turbulenceForce(
+				ofRandom(-5.0f, 5.0f),
+				ofRandom(-1.0f, 1.0f),
+				ofRandom(-5.0f, 5.0f)
+			);
+
+			ship.addForce(turbulenceForce);
+		}
 	}
 }

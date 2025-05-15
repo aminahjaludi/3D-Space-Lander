@@ -416,9 +416,6 @@
     <ClInclude Include="src\Octree.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\Primitives.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="src\ray.h">
       <Filter>src</Filter>
     </ClInclude>
