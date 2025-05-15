@@ -126,7 +126,7 @@ void ofApp::update() {
 			float y_land = lander.getPosition().y;
 			float z_land = lander.getPosition().z;
 			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
-			//cout << lander.getPosition() << endl;
+			
 			checkCollision();
 
 			if (bCollisionDetected) {
@@ -134,9 +134,15 @@ void ofApp::update() {
 			}
 
 			calculateAltitude();
+			if (thrusting) {
+				uint64_t now = ofGetElapsedTimeMillis();
+				if (now - lastDecrementTime >= decrementInterval && fuel > 0) {
+					fuel--; // decrement
+					lastDecrementTime = now;
+				}
+			}
 
-			//Move lander in accordance to key pressed
-			//if (altitude > 0) {
+			if (!lost && fuel > 0) {
 				if (w_pressed) {
 					moveUp();
 				}
@@ -161,16 +167,15 @@ void ofApp::update() {
 				if (left_pressed) {
 					moveLeft();
 				}
-
-				applyExternalForces();
-				ship.integrator();
-				exhaustemitter.update();
-
-				lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
-				lander.setRotation(0, ship.rot, 0, 1, 0);
 			}
+			applyExternalForces();
+			ship.integrator();
+			exhaustemitter.update();
+
+			lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
+			lander.setRotation(0, ship.rot, 0, 1, 0);
+		}
 			
-		//}
 	}
 	else {
 		lander.clear();
@@ -211,15 +216,26 @@ void ofApp::draw() {
 		ofSetColor(255);  // white text
 
 		string title = "GAME OVER";
+		string loss_reason;
+
+		if (fuel == 0) {
+			loss_reason = "Ran out of fuel!";
+		}
+		else {
+			loss_reason = "Landing was too forceful!";
+		}
+
 		string instruction1 = "Press Q to quit to Main Menu";
 
 		// Measure string widths for centering
 		float titleWidth = titleFont.stringWidth(title);
 		float instr1Width = instructionFont.stringWidth(instruction1);
+		float lossRWidth = instructionFont.stringWidth(loss_reason);
 
 		// Draw centered
 		titleFont.drawString(title, centerX - titleWidth / 2, 200);
-		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+		instructionFont.drawString(loss_reason, centerX - lossRWidth / 2, 300);
+		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 400);
 	}
 	else if (!restart) {
 		ofDisableLighting();
@@ -283,17 +299,28 @@ void ofApp::draw() {
 			ofSetColor(ofColor::white);
 			ofDrawBitmapString(altitude_str, x, y);
 		}
-	
+
+		std::string fuel_info = "Current fuel: " + to_string(fuel);
+		int textWidth = 8 * fuel_info.length();
+		int textHeight = 12;
+
+		int x = ofGetWidth() - textWidth - 10;
+		int y = ofGetHeight() - 10;
+		ofSetColor(ofColor::white);
+		ofDrawBitmapString(fuel_info, x, y);
+
+		if (fuel == 0) {
+			lost = true;
+			won = false;
+		}
+
 		// this makes everything look glowy :)
-		//
 		ofEnableBlendMode(OF_BLENDMODE_ADD);
 		ofEnablePointSprites();
 
-
 		// begin drawing in the camera
-		//
 		shader.begin();
-		//shader.setUniformTexture("tex", particleTex, 0); 
+
 		shader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
 		cam.begin();
 		particleTex.bind();
@@ -308,7 +335,6 @@ void ofApp::draw() {
 		else {
 			cout << "Rendering " << exhaustemitter.sys->particles.size() << " exhaust particles.";
 		}*/
-
 
 		ofDisablePointSprites();
 		ofDisableBlendMode();
@@ -369,6 +395,7 @@ void ofApp::keyPressed(int key) {
 		classic_mode = false;
 		dragging_mode = false;
 		disableDragging = false;
+		fuel = 120;
 		break;
 	case 'e':
 	case 'E':
@@ -377,24 +404,29 @@ void ofApp::keyPressed(int key) {
 		break;
 	case OF_KEY_UP:
 		up_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case OF_KEY_DOWN:
 		down_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case OF_KEY_RIGHT:
 		right_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case OF_KEY_LEFT:
 		left_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'w':
 	case 'W':
 		w_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		exhaustemitter.sys->reset();
 		exhaustemitter.start();
 		exhausttimer = ofGetElapsedTimeMillis();
@@ -402,17 +434,20 @@ void ofApp::keyPressed(int key) {
 	case 's':
 	case 'S':
 		s_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'd':
 	case 'D':
 		d_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'a':
 	case 'A':
 		a_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'C':
 	case 'c':
@@ -444,40 +479,42 @@ void ofApp::keyReleased(int key) {
 	switch (key) {
 	case OF_KEY_UP:
 		up_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_DOWN:
 		down_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_RIGHT:
 		right_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_LEFT:
 		left_pressed = false;
+		thrusting = false;
 		break;
 	case 'w':
 	case 'W':
 		w_pressed = false;
+		thrusting = false;
 		break;
 	case 's':
 	case 'S':
 		s_pressed = false;
+		thrusting = false;
 		break;
 	case 'd':
 	case 'D':
 		d_pressed = false;
+		thrusting = false;
 		break;
 	case 'a':
 	case 'A':
 		a_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_ALT:
 		cam.disableMouseInput();
-		break;
-	case ' ':
-		/*cout << "distance: " << cam.getDistance() << endl;
-		cout << "pos: " << cam.getPosition() << endl;
-		cout << "global pos: " << cam.getGlobalPosition() << endl;
-		cout << "global ori: " << cam.getGlobalOrientation() << endl;*/
 		break;
 	default:
 		break;
