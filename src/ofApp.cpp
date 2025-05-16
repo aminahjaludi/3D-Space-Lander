@@ -42,7 +42,7 @@ void ofApp::setup() {
 	thrust.setLoop(false);
 
 	// setup rudimentary lighting 
-	initLightingAndMaterials();
+	//initLightingAndMaterials();
 
 	//set up lighting system
 	setupLightSystem();
@@ -111,10 +111,13 @@ void ofApp::setup() {
 	explosionemitter.setRate(300);  // Particles per second
 	explosionemitter.setGroupSize(300);  // Number of particles emitted per update
 	explosionemitter.setVelocity(ofVec3f(0, 30, 0));  // Set velocity
-	explosionemitter.setParticleRadius(10);
+	explosionemitter.setParticleRadius(30);
 
 	//set flag to false
 	explosiontriggered = false;
+
+
+
 }
 
 void ofApp::setupLightSystem() {
@@ -129,46 +132,57 @@ void ofApp::setupLightSystem() {
 	for (int i = 0; i < 3; i++) {
 		pads[i].position = positions[i];
 
-		// Key Light Setup
+		// Key Light Setup (Dimmed)
 		pads[i].keyLight.setup();
 		pads[i].keyLight.enable();
-		pads[i].keyLight.setAreaLight(1, 1);
-		pads[i].keyLight.setDiffuseColor(ofFloatColor(0.7, 0.9, 1.0)); // Light blue tint
-		pads[i].keyLight.setAmbientColor(ofFloatColor(0.2, 0.2, 0.2)); // Soft ambient light
-		pads[i].keyLight.setSpecularColor(ofFloatColor(1.0, 1.0, 1.0)); // Bright reflections
+		pads[i].keyLight.setAreaLight(50, 3);
+		pads[i].keyLight.setAttenuation(1.0, 0.3, 0.1);
+		pads[i].keyLight.setDiffuseColor(ofFloatColor(2, 2, 2)); // More brightness
+		pads[i].keyLight.setAmbientColor(ofFloatColor(1.5, 1.5, 1.5)); 
+		pads[i].keyLight.setSpecularColor(ofFloatColor(0.2, 0.2, 0.2));   // Softer reflections
 
-		pads[i].keyLight.setPosition(pads[i].position.x + 5, pads[i].position.y + 10, pads[i].position.z + 5);
+		pads[i].keyLight.setPosition(pads[i].position.x + 10, pads[i].position.y + 25, pads[i].position.z + 10);
 		pads[i].keyLight.rotate(35, ofVec3f(0, 1, 0));
 		pads[i].keyLight.rotate(-45, ofVec3f(1, 0, 0));
+		pads[i].keyLight.lookAt(ofVec3f(pads[i].position.x, pads[i].position.y - 10, pads[i].position.z));
 
-		// Fill Light Setup
+		// Fill Light Setup (Dimmed)
 		pads[i].fillLight.setup();
 		pads[i].fillLight.enable();
 		pads[i].fillLight.setPointLight();
-		pads[i].fillLight.setAttenuation(3, .01, .01);
-		pads[i].fillLight.setDiffuseColor(ofFloatColor(1.0, 1.0, 1.0)); // Pure white to balance shadows
-		pads[i].fillLight.setAmbientColor(ofFloatColor(0.3, 0.3, 0.3)); // Brightens overall scene
-		pads[i].fillLight.setSpecularColor(ofFloatColor(1.0, 1.0, 1.0)); // Strong highlights
+		pads[i].fillLight.setAttenuation(0.6, 0.2, 0.05);
 
-		pads[i].fillLight.setPosition(pads[i].position.x + 1, pads[i].position.y + 1, pads[i].position.z + 5);
+		pads[i].fillLight.setPosition(pads[i].position.x + 1, pads[i].position.y + 2, pads[i].position.z + 5);
 		pads[i].fillLight.rotate(30, ofVec3f(1, 0, 0));
 		pads[i].fillLight.rotate(-45, ofVec3f(0, 1, 0));
+		pads[i].fillLight.lookAt(pads[i].position);
 
-		// Rim Light Setup
+		// Rim Light Setup (Dimmed)
 		pads[i].rimLight.setup();
 		pads[i].rimLight.enable();
 		pads[i].rimLight.setSpotlight();
-		pads[i].rimLight.setScale(.05);
-		pads[i].rimLight.setSpotlightCutOff(30);
-		pads[i].rimLight.setAttenuation(.5, .001, .001);
-		pads[i].rimLight.setDiffuseColor(ofFloatColor(0.8, 0.9, 1.0)); // Light blue glow
-		pads[i].rimLight.setAmbientColor(ofFloatColor(0.2, 0.2, 0.2)); // Minimal ambient effect
-		pads[i].rimLight.setSpecularColor(ofFloatColor(1.0, 1.0, 1.0)); // Sharp reflections
+		pads[i].rimLight.setSpotlightCutOff(25); // Narrow glow
+		pads[i].rimLight.setAttenuation(0.4, 0.2, 0.1);
+		pads[i].rimLight.setDiffuseColor(ofFloatColor(0.4, 0.45, 1)); // Dimmed blue glow
+		pads[i].rimLight.setAmbientColor(ofFloatColor(0.1, 0.1, 0.1));
+		pads[i].rimLight.setSpecularColor(ofFloatColor(1, 1, 1));
 
 		pads[i].rimLight.setPosition(pads[i].position.x, pads[i].position.y + 1, pads[i].position.z - 4);
 		pads[i].rimLight.rotate(50, ofVec3f(1, 0, 0));
 		pads[i].rimLight.rotate(180, ofVec3f(0, 1, 0));
+		pads[i].rimLight.lookAt(pads[i].position);
+
 	}
+	//set up lights for spacecraft
+	shiplights.keyLight.setup();
+	shiplights.keyLight.enable();
+
+	shiplights.keyLight.setSpotlightCutOff(1); 
+	shiplights.keyLight.setDiffuseColor(ofFloatColor(0.8, 0.8, 1));
+	shiplights.keyLight.setSpecularColor(ofFloatColor(2.0, 2.0, 2.0)); // More reflective glow on the rocket
+	shiplights.fillLight.setAttenuation(0.5, 0.3, .1);
+	shiplights.keyLight.setPosition(ship.pos.x, ship.pos.y + 50, ship.pos.z + 10);
+	shiplights.keyLight.lookAt(ofVec3f(ship.pos.x, ship.pos.y, ship.pos.z)); // Aim downward at rocket's bottom
 
 }
 
@@ -221,6 +235,8 @@ void ofApp::loadExplosionVbo() {
 void ofApp::update() {
 	if (restart) {
 		if (bLanderLoaded) {
+			shiplights.keyLight.setPosition(ship.pos.x, ship.pos.y + 50, ship.pos.z + 10);
+
 			//check if explosion has occured, update explosionemitter
 			if (explosiontriggered)
 			{
@@ -492,9 +508,15 @@ void ofApp::draw() {
 		currentCam->end();
 		shader.end();
 
+		ofSetColor(255);  // Reset drawing color to white.
+		ofEnableBlendMode(OF_BLENDMODE_ALPHA);  // Reset back to normal (alpha) blending.
+		glUseProgram(0);  // Ensure no shader is still active.
+		ofDisablePointSprites();
+
 		//if explosion has been trigeered, use vertex buffer to draw explosion particles
 		if (explosiontriggered)
 		{
+			ofEnablePointSprites();
 			loadExplosionVbo();
 			explosionshader.begin();
 			explosionshader.setUniformTexture("tex", particleTex, 0);
@@ -508,8 +530,11 @@ void ofApp::draw() {
 			particleTex.unbind();
 			currentCam->end();
 			explosionshader.end();
+			ofSetColor(255);  // Reset drawing color to white.
+			ofEnableBlendMode(OF_BLENDMODE_ALPHA);  // Reset back to normal (alpha) blending.
+			glUseProgram(0);  // Ensure no shader is still active.
+			ofDisablePointSprites();
 		}
-		ofEnablePointSprites();
 
 		currentCam->begin();
 		ofPushMatrix();
@@ -610,6 +635,7 @@ void ofApp::keyPressed(int key) {
 	case 's':
 	case 'S':
 		s_pressed = true;
+		triggerExhaust(); //trigger exhaust
 		thrusting = true;
 		if (bLanderLoaded) disableDragging = true;
 		break;
