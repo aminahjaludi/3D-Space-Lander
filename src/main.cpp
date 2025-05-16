@@ -1,7 +1,6 @@
 #include "ofMain.h"
 #include "ofApp.h"
 
-//========================================================================
 int main() {
 	ofGLFWWindowSettings settings;
 	settings.setGLVersion(4, 6);  // Explicitly request OpenGL 4.6

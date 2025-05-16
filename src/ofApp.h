@@ -9,7 +9,7 @@
 #include "ParticleEmitter.h"
 #include "ParticleSystem.h"
 
-struct LandingPadLights {
+struct Lights {
 	ofLight keyLight;
 	ofLight fillLight;
 	ofLight rimLight;
@@ -161,5 +161,6 @@ public:
 	ofSoundPlayer ambient;
 	ofSoundPlayer thrust;
 	//lighting
-	LandingPadLights pads[3];
+	Lights pads[3];
+	Lights shiplights;
 };
