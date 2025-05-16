@@ -67,24 +67,37 @@ void ofApp::setup() {
 	//
 #ifdef TARGET_OPENGLES
 	shader.load("shaders_gles/shader");
+	explosionshader.load("shaders_gles/shader");
 #else
 	shader.load("shaders/shader");
+	explosionshader.load("shaders/shader");
 #endif
 
-
+	//set up exhaust and explosion emitters, render them with shader
 	exhaustemitter.setEmitterType(DiskEmitter);
 	exhaustemitter.setPosition(ofVec3f(0, 0, 0));  // Set position (adjust as needed)
 	exhaustemitter.setLifespan(1);  // Set particle lifespan
 	//exhaustemitter.setRate(70);  // Particles per second
 	//exhaustemitter.setGroupSize(30);  // Number of particles emitted per update
-	exhaustemitter.setRate(200);  // Particles per second
-	exhaustemitter.setGroupSize(100);  // Number of particles emitted per update
+	exhaustemitter.setRate(400);  // Particles per second
+	exhaustemitter.setGroupSize(300);  // Number of particles emitted per update
 	exhaustemitter.setVelocity(ofVec3f(0, 2, 0));  // Set velocity
 	//exhaustemitter.setParticleRadius(0.04);  // Particle size
-	exhaustemitter.setParticleRadius(10);
+	exhaustemitter.setParticleRadius(20);
+
+	explosionemitter.setEmitterType(RadialEmitter);
+	explosionemitter.setPosition(ofVec3f(0, 0, 0));
+	explosionemitter.setLifespan(10);  // Set particle lifespan
+	explosionemitter.setRate(300);  // Particles per second
+	explosionemitter.setGroupSize(300);  // Number of particles emitted per update
+	explosionemitter.setVelocity(ofVec3f(0, 30, 0));  // Set velocity
+	explosionemitter.setParticleRadius(10);
+
+	//set flag to false
+	explosiontriggered = false;
 }
 
-// load vertex buffer in preparation for rendering
+// load vertex buffer in preparation for rendering the exhaust emitter
 //
 void ofApp::loadVbo() {
 	if (exhaustemitter.sys->particles.size() < 1) return;
@@ -107,11 +120,52 @@ void ofApp::loadVbo() {
 	vbo.setAttributeData(3, &lifeRatios[0], 1, lifeRatios.size(), GL_STATIC_DRAW);
 }
 
+void ofApp::loadExplosionVbo() {
+	if (explosionemitter.sys->particles.size() < 1) return;
+
+	vector<ofVec3f> sizes;
+	vector<ofVec3f> points;
+	vector<float> lifeRatios;
+	for (auto& particle : explosionemitter.sys->particles) {
+		points.push_back(particle.position);
+		sizes.push_back(ofVec3f(particle.radius));
+		float ratio = particle.age() / particle.lifespan;
+		lifeRatios.push_back(ratio);
+	}
+	// upload the data to the vbo
+	//
+	int total = (int)points.size();
+	explosionvbo.clear();
+	explosionvbo.setVertexData(&points[0], total, GL_STATIC_DRAW);
+	explosionvbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
+	explosionvbo.setAttributeData(3, &lifeRatios[0], 1, lifeRatios.size(), GL_STATIC_DRAW);
+}
+
 //--------------------------------------------------------------
 
 void ofApp::update() {
 	if (restart) {
 		if (bLanderLoaded) {
+			//check if explosion has occured, update explosionemitter
+			if (explosiontriggered)
+			{
+				//loadExplosionVbo();
+				explosionemitter.update();
+
+				float timer = ofGetElapsedTimeMillis() - explosiontimer;
+				if (explosionemitter.sys->particles.size() > 0) {
+					cout << "Particles exist before clearing: " << explosionemitter.sys->particles.size() << endl;
+				}
+				else {
+					cout << "Particles were never created!" << endl;
+				}
+
+				if (timer > 0) { 
+					explosiontriggered = false;
+					explosionemitter.stop();
+				}
+
+			}
 			if (won) return;
 			if (exhaustemitter.started)
 			{
@@ -120,11 +174,14 @@ void ofApp::update() {
 				//if elapsedtime is greater than half a second stop the exhaust
 				if (elapsedtime > 500) {
 					exhaustemitter.stop();
+					exhaustemitter.sys->reset();           
+					exhaustemitter.sys->particles.clear();  
 				}
 			}
 			float x_land = lander.getPosition().x;
 			float y_land = lander.getPosition().y;
 			float z_land = lander.getPosition().z;
+			//on every update set the emitters to or near the psotion of the rocket
 			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
 			//cout << lander.getPosition() << endl;
 			checkCollision();
@@ -176,6 +233,8 @@ void ofApp::update() {
 		lander.clear();
 		bLanderLoaded = false;
 		bCollisionDetected = false;
+		explosionemitter.sys->reset();
+		explosionemitter.sys->particles.clear();
 	}
 
 	
@@ -184,7 +243,6 @@ void ofApp::update() {
 //--------------------------------------------------------------
 
 void ofApp::draw() {
-
 	loadVbo();
 	ofBackground(ofColor::black);
 
@@ -207,6 +265,7 @@ void ofApp::draw() {
 		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
 	}
 	if (lost && ofGetElapsedTimef() >= 1.5) {
+
 		ofDisableLighting();
 		ofSetColor(255);  // white text
 
@@ -225,7 +284,7 @@ void ofApp::draw() {
 		ofDisableLighting();
 		ofBackground(20); // dark background
 		ofSetColor(255);  // white text
-
+		 
 		string title = "3D LANDER GAME";
 		string instruction1 = "Press E to Start, and Q to quit";
 		string instruction2 = "Use Arrow Keys and AWSD Keys to Move";
@@ -283,7 +342,7 @@ void ofApp::draw() {
 			ofSetColor(ofColor::white);
 			ofDrawBitmapString(altitude_str, x, y);
 		}
-	
+		ofPushMatrix();
 		// this makes everything look glowy :)
 		//
 		ofEnableBlendMode(OF_BLENDMODE_ADD);
@@ -293,7 +352,7 @@ void ofApp::draw() {
 		// begin drawing in the camera
 		//
 		shader.begin();
-		//shader.setUniformTexture("tex", particleTex, 0); 
+		shader.setUniformTexture("tex", particleTex, 0); 
 		shader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
 		cam.begin();
 		particleTex.bind();
@@ -309,12 +368,29 @@ void ofApp::draw() {
 			cout << "Rendering " << exhaustemitter.sys->particles.size() << " exhaust particles.";
 		}*/
 
+		//if explosion has been trigeered, use vertex buffer to draw explosion particles
+		if (explosiontriggered)
+		{
+			loadExplosionVbo();
+			explosionshader.begin();
+			explosionshader.setUniformTexture("tex", particleTex, 0);
+			explosionshader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
+			cam.begin();
+			particleTex.bind();
+			cout << "Particles before drawing: " << explosionemitter.sys->particles.size() << endl;
+
+			explosionvbo.draw(GL_POINTS, 0, (int)explosionemitter.sys->particles.size());
+
+			particleTex.unbind();
+			cam.end();
+			explosionshader.end();
+		}
 
 		ofDisablePointSprites();
 		ofDisableBlendMode();
 		ofEnableAlphaBlending();
 	
-
+		ofPopMatrix();
 		cam.begin();
 		ofPushMatrix();
 
@@ -374,26 +450,36 @@ void ofApp::keyPressed(int key) {
 	case 'E':
 		restart = true;
 		quit = false;
+		explosiontriggered = false;
 		break;
 	case OF_KEY_UP:
 		up_pressed = true;
-		disableDragging = true;
+		//trigger exhaust
+		triggerExhaust();
 		break;
 	case OF_KEY_DOWN:
 		down_pressed = true;
-		disableDragging = true;
+		//trigger exhaust
+		triggerExhaust();
+    disableDragging = true;
 		break;
 	case OF_KEY_RIGHT:
 		right_pressed = true;
-		disableDragging = true;
+		//trigger exhaust
+		triggerExhaust();
+      disableDragging = true;
 		break;
 	case OF_KEY_LEFT:
 		left_pressed = true;
-		disableDragging = true;
+		//trigger exhaust
+		triggerExhaust();
+    disableDragging = true;
 		break;
 	case 'w':
 	case 'W':
 		w_pressed = true;
+		//trigger exhaust
+		triggerExhaust();
 		disableDragging = true;
 		exhaustemitter.sys->reset();
 		exhaustemitter.start();
@@ -402,6 +488,8 @@ void ofApp::keyPressed(int key) {
 	case 's':
 	case 'S':
 		s_pressed = true;
+		//trigger exhaust
+		//triggerExhaust();
 		disableDragging = true;
 		break;
 	case 'd':
@@ -435,6 +523,28 @@ void ofApp::keyPressed(int key) {
 	default:
 		break;
 	}
+}
+
+void ofApp::triggerExhaust() {
+	//start exhaust emitter
+	exhaustemitter.sys->reset();
+	exhaustemitter.start();
+	exhausttimer = ofGetElapsedTimeMillis();
+}
+
+void ofApp::triggerExplosion(glm::vec3& explosionpoint) {
+	//set the position of the explosion emitter to the terrain point
+	explosionemitter.setPosition(explosionpoint);
+	//start the explosion
+	explosionemitter.start();
+	cout << "Explosion emitter started: " << explosionemitter.started << endl;
+	cout << "Explosion emitter particle system size: " << explosionemitter.sys->particles.size() << endl;
+	explosionemitter.update();
+	//set flag to true
+	explosiontriggered = true;
+	//set explosion timer 
+	explosiontimer = ofGetElapsedTimeMillis();
+	cout << "Explosion triggered at: " << explosionemitter.getPosition() << endl;
 }
 
 //--------------------------------------------------------------
@@ -702,8 +812,13 @@ glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
 //--------------------------------------------------------------
 
 void ofApp::resolveCollision() {
-	
 	if (ship.prev_force.y < -4 || altitude < 0) { //Loss
+
+    cout << "Collision detected! Force: " << ship.prev_force.y << ", Altitude: " << altitude << endl;
+
+		glm::vec3 collisionarea = ship.pos;
+		//call trigger Explosion
+		triggerExplosion(collisionarea);
 		ofResetElapsedTimeCounter();
 		lost = true;
 		glm::vec3 impulseForce = glm::vec3(1, 1, 0);
@@ -724,7 +839,7 @@ void ofApp::resolveCollision() {
 		}
 
 		while (colBoxList.size() >= 10) {
-			glm::vec3 impulseForce = glm::vec3(0, 1, 0);
+			glm::vec3 impulseForce = glm::vec3(0, 1, 0);  // World up
 
 			impulseForce *= ship.thrust;
 			ship.velocity += impulseForce * 10;
@@ -743,6 +858,7 @@ void ofApp::resolveCollision() {
 		}
 	}
 }
+
 
 //--------------------------------------------------------------
 
@@ -893,7 +1009,7 @@ void ofApp::calculateAltitude() {
 			ofDefaultVertexType vert = octree.mesh.getVertex(leaf.points[0]);
 			altitude = bottomCenter.y() - vert.y;
 		}
-	//}
+		//}
 }
 
 //--------------------------------------------------------------

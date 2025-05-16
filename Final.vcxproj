@@ -125,6 +125,8 @@
     <ClCompile Include="..\..\..\addons\ofxGui\src\ofxToggle.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ShapeIntegrate.h" />
+    <ClInclude Include="SpacecraftShape.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\Particle.h" />

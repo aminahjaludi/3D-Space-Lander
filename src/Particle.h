@@ -33,7 +33,7 @@ Particle::Particle() {
 	forces.set(0, 0, 0);
 	lifespan = 5;
 	birthtime = 0;
-	radius = 2;
+	radius = 5;
 	damping = .99;
 	mass = 1;
 	color = ofColor::aquamarine;
