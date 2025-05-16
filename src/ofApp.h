@@ -48,6 +48,7 @@ public:
 
 	void loadVbo();			//vertex buffer for exhaust
 	void loadExplosionVbo(); //vertex buffer for explosion
+	bool checkLanding();
 
 	ParticleEmitter exhaustemitter;
 	ParticleEmitter explosionemitter;
@@ -110,4 +111,6 @@ public:
 	bool classic_mode = false;
 	bool dragging_mode = false;
 	bool lost = false;
+	bool won = false;
+	bool disableDragging = false;
 };

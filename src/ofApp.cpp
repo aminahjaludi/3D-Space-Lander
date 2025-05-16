@@ -166,6 +166,7 @@ void ofApp::update() {
 				}
 
 			}
+			if (won) return;
 			if (exhaustemitter.started)
 			{
 				float elapsedtime = ofGetElapsedTimeMillis() - exhausttimer;
@@ -248,6 +249,21 @@ void ofApp::draw() {
 	// Get window center
 	float centerX = ofGetWidth() / 2.0;
 
+	if (won && ofGetElapsedTimef() >= 1.5) {
+		ofDisableLighting();
+		ofSetColor(255);  // white text
+
+		string title = "YOU WIN!";
+		string instruction1 = "Press Q to quit to Main Menu";
+
+		// Measure string widths for centering
+		float titleWidth = titleFont.stringWidth(title);
+		float instr1Width = instructionFont.stringWidth(instruction1);
+
+		// Draw centered
+		titleFont.drawString(title, centerX - titleWidth / 2, 200);
+		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+	}
 	if (lost && ofGetElapsedTimef() >= 1.5) {
 
 		ofDisableLighting();
@@ -307,6 +323,14 @@ void ofApp::draw() {
 		
 		glDepthMask(true);
 
+		if (dragging_mode) {
+			string drag_instr = "Welcome to dragging mode! Drag the lander to your desired starting position.\nThe game will begin once you press arrows or awsd keys and dragging will be disabled.";
+
+			float x = 220;
+			float y = 25;
+			ofSetColor(ofColor::white);
+			ofDrawBitmapString(drag_instr, x, y);
+		}
 
 		if (altitude_toggle) {
 			ostringstream oss;
@@ -414,11 +438,13 @@ void ofApp::keyPressed(int key) {
 		break;
 	case 'q':
 	case 'Q':
+		won = false;
 		lost = false;
 		quit = true;
 		restart = false;
 		classic_mode = false;
 		dragging_mode = false;
+		disableDragging = false;
 		break;
 	case 'e':
 	case 'E':
@@ -435,36 +461,46 @@ void ofApp::keyPressed(int key) {
 		down_pressed = true;
 		//trigger exhaust
 		triggerExhaust();
+    disableDragging = true;
 		break;
 	case OF_KEY_RIGHT:
 		right_pressed = true;
 		//trigger exhaust
 		triggerExhaust();
+      disableDragging = true;
 		break;
 	case OF_KEY_LEFT:
 		left_pressed = true;
 		//trigger exhaust
 		triggerExhaust();
+    disableDragging = true;
 		break;
 	case 'w':
 	case 'W':
 		w_pressed = true;
 		//trigger exhaust
 		triggerExhaust();
+		disableDragging = true;
+		exhaustemitter.sys->reset();
+		exhaustemitter.start();
+		exhausttimer = ofGetElapsedTimeMillis();
 		break;
 	case 's':
 	case 'S':
 		s_pressed = true;
 		//trigger exhaust
 		//triggerExhaust();
+		disableDragging = true;
 		break;
 	case 'd':
 	case 'D':
 		d_pressed = true;
+		disableDragging = true;
 		break;
 	case 'a':
 	case 'A':
 		a_pressed = true;
+		disableDragging = true;
 		break;
 	case 'C':
 	case 'c':
@@ -604,7 +640,7 @@ void ofApp::mouseDragged(int x, int y, int button) {
 	// if moving camera, don't allow mouse interaction
 	if (cam.getMouseInputEnabled()) return;
 	if (restart && classic_mode) return;
-
+	if (disableDragging) return;
 	if (bInDrag) {
 
 		glm::vec3 landerPos = lander.getPosition();
@@ -776,26 +812,33 @@ glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
 //--------------------------------------------------------------
 
 void ofApp::resolveCollision() {
-	//when the collision force is too great, player lost
-	if (ship.prev_force.y < -4 || altitude < 0) {
-		cout << "Collision detected! Force: " << ship.prev_force.y << ", Altitude: " << altitude << endl;
+	if (ship.prev_force.y < -4 || altitude < 0) { //Loss
+
+    cout << "Collision detected! Force: " << ship.prev_force.y << ", Altitude: " << altitude << endl;
 
 		glm::vec3 collisionarea = ship.pos;
 		//call trigger Explosion
 		triggerExplosion(collisionarea);
-
 		ofResetElapsedTimeCounter();
 		lost = true;
-		glm::vec3 impulseForce = glm::vec3(1, 1, 0);  // World up
+		glm::vec3 impulseForce = glm::vec3(1, 1, 0);
 
 		impulseForce *= ship.thrust;
 		ship.velocity += impulseForce * 700;
 		ship.addForce(impulseForce * 700);
 		ship.integrator();
 	}
-	else {
-		while (colBoxList.size() >= 10) {
+	else { //Win / bounce back
 
+		bool landed = checkLanding();
+
+		if (landed) {
+			ofResetElapsedTimeCounter();
+			won = true;
+			return;
+		}
+
+		while (colBoxList.size() >= 10) {
 			glm::vec3 impulseForce = glm::vec3(0, 1, 0);  // World up
 
 			impulseForce *= ship.thrust;
@@ -986,4 +1029,46 @@ void ofApp::applyExternalForces() {
 			ship.addForce(turbulenceForce);
 		}
 	}
+}
+
+
+//--------------------------------------------------------------
+
+bool ofApp::checkLanding() {
+	ofVec3f min = lander.getSceneMin() + lander.getPosition();
+	ofVec3f max = lander.getSceneMax() + lander.getPosition();
+	Box bounds = Box(Vector3(min.x, min.y, min.z), Vector3(max.x, max.y, max.z));
+
+	Vector3 bottomCenter(
+		(bounds.min().x() + bounds.max().x()) / 2.0f,   // center in X
+		bounds.min().y(),								// bottom in Y
+		(bounds.min().z() + bounds.max().z()) / 2.0f    // center in Z
+	);
+
+	float landingRadius = 25.699;
+
+	//Landing spot positions (XZ components only)
+	ofVec3f disk1(-2.104, 5.376, -125.309);
+	ofVec3f disk2(101.439, -2.432, 96.568);
+	ofVec3f disk3(-154.609, 65.377, 130.132);
+
+	// Check distance on XZ plane for Disk 1
+	float dx1 = bottomCenter.x() - disk1.x;
+	float dz1 = bottomCenter.z() - disk1.z;
+	float distance1 = sqrt(dx1 * dx1 + dz1 * dz1);
+	bool landedOnDisk1 = distance1 <= landingRadius;
+
+	//Check distance on XZ plane for Disk 2
+	float dx2 = bottomCenter.x() - disk2.x;
+	float dz2 = bottomCenter.z() - disk2.z;
+	float distance2 = sqrt(dx2 * dx2 + dz2 * dz2);
+	bool landedOnDisk2 = distance2 <= landingRadius;
+
+	//Check distance on XZ plane for Disk 3
+	float dx3 = bottomCenter.x() - disk3.x;
+	float dz3 = bottomCenter.z() - disk3.z;
+	float distance3 = sqrt(dx3 * dx3 + dz3 * dz3);
+	bool landedOnDisk3 = distance3 <= landingRadius;
+
+	return landedOnDisk1 || landedOnDisk2 || landedOnDisk3;
 }
