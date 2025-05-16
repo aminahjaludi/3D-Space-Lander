@@ -39,7 +39,7 @@ public:
 	glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 p, glm::vec3 n);
 	void resolveCollision();
 	void checkCollision();
-	void setUpClassicMode();
+	void setupClassicMode();
 	void calculateAltitude();
 	void applyExternalForces();
 	void moveUp();
@@ -52,13 +52,16 @@ public:
 	void moveBackwards();
 	void triggerExplosion(glm::vec3&);	//triggers explosion when rocket crashes with terrain at a high force
 	void triggerExhaust();
-
+	void setupEmitters();
 	void loadVbo();			//vertex buffer for exhaust
 	void loadExplosionVbo(); //vertex buffer for explosion
 	bool checkLanding();
-
-	//function to set up lights
-	void setupLightSystem();
+	void displayMainMenu();
+	void displayModes();
+	void displayWin();
+	void displayLoss();
+	void printInfo();
+	void setupLightSystem(); //function to set up lights
 
 	ParticleEmitter exhaustemitter;
 	ParticleEmitter explosionemitter;
