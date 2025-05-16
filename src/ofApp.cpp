@@ -93,16 +93,21 @@ void ofApp::setup() {
 	explosionshader.load("shaders/shader");
 #endif
 
+	setupEmitters();
+}
+
+//--------------------------------------------------------------
+
+void ofApp::setupEmitters() {
 	//set up exhaust and explosion emitters, render them with shader
 	exhaustemitter.setEmitterType(DiskEmitter);
-	exhaustemitter.setPosition(ofVec3f(0, 0, 0));  // Set position (adjust as needed)
-	exhaustemitter.setLifespan(1);  // Set particle lifespan
-	//exhaustemitter.setRate(70);  // Particles per second
-	//exhaustemitter.setGroupSize(30);  // Number of particles emitted per update
-	exhaustemitter.setRate(400);  // Particles per second
-	exhaustemitter.setGroupSize(300);  // Number of particles emitted per update
-	exhaustemitter.setVelocity(ofVec3f(0, 2, 0));  // Set velocity
-	//exhaustemitter.setParticleRadius(0.04);  // Particle size
+	exhaustemitter.setPosition(ofVec3f(0, 0, 0));	// Set position (adjust as needed)
+	exhaustemitter.setLifespan(1);					// Set particle lifespan
+
+	exhaustemitter.setRate(400);					// Particles per second
+	exhaustemitter.setGroupSize(300);				// Number of particles emitted per update
+	exhaustemitter.setVelocity(ofVec3f(0, 2, 0));	// Set velocity
+
 	exhaustemitter.setParticleRadius(20);
 
 	explosionemitter.setEmitterType(RadialEmitter);
@@ -119,6 +124,8 @@ void ofApp::setup() {
 
 
 }
+
+//--------------------------------------------------------------
 
 void ofApp::setupLightSystem() {
 	//store the positions of the landing spots
@@ -186,8 +193,9 @@ void ofApp::setupLightSystem() {
 
 }
 
+//--------------------------------------------------------------
+
 // load vertex buffer in preparation for rendering the exhaust emitter
-//
 void ofApp::loadVbo() {
 	if (exhaustemitter.sys->particles.size() < 1) return;
 
@@ -208,6 +216,8 @@ void ofApp::loadVbo() {
 	vbo.setNormalData(&sizes[0], total, GL_STATIC_DRAW);
 	vbo.setAttributeData(3, &lifeRatios[0], 1, lifeRatios.size(), GL_STATIC_DRAW);
 }
+
+//--------------------------------------------------------------
 
 void ofApp::loadExplosionVbo() {
 	if (explosionemitter.sys->particles.size() < 1) return;
@@ -369,121 +379,21 @@ void ofApp::draw() {
 	// Get window center
 	float centerX = ofGetWidth() / 2.0;
 
-	if (won && ofGetElapsedTimef() - game_endt >= 5.5f) {
-		ofDisableLighting();
-		ofSetColor(255);  // white text
-
-		string title = "YOU WIN!";
-		string instruction1 = "Press Q to quit to Main Menu";
-
-		// Measure string widths for centering
-		float titleWidth = titleFont.stringWidth(title);
-		float instr1Width = instructionFont.stringWidth(instruction1);
-
-		// Draw centered
-		titleFont.drawString(title, centerX - titleWidth / 2, 200);
-		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+	if (won && ofGetElapsedTimef() - game_endt >= 1.5f) {
+		displayWin();
 	}
 	if (lost && ofGetElapsedTimef() - game_endt >= 1.5f) {
-		ofDisableLighting();
-		ofSetColor(255);  // white text
-
-		string title = "GAME OVER";
-		string loss_reason;
-
-		if (fuel == 0) {
-			loss_reason = "Ran out of fuel!";
-		}
-		else {
-			loss_reason = "Landing was too forceful!";
-		}
-
-		string instruction1 = "Press Q to quit to Main Menu";
-
-		// Measure string widths for centering
-		float titleWidth = titleFont.stringWidth(title);
-		float instr1Width = instructionFont.stringWidth(instruction1);
-		float lossRWidth = instructionFont.stringWidth(loss_reason);
-
-		// Draw centered
-		titleFont.drawString(title, centerX - titleWidth / 2, 200);
-		instructionFont.drawString(loss_reason, centerX - lossRWidth / 2, 300);
-		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 400);
+		displayLoss();
 	}
 	else if (!restart) {
-		ofDisableLighting();
-		ofBackground(20); // dark background
-		ofSetColor(255);  // white text
-		 
-		string title = "3D LANDER GAME";
-		string instruction1 = "Press E to Start, and Q to quit";
-		string instruction2 = "Use Arrow Keys and AWSD Keys to Move";
-		string instruction3 = "Use T, Y, and C for camera controls.";
-
-		// Measure string widths for centering
-		float titleWidth = titleFont.stringWidth(title);
-		float instr1Width = instructionFont.stringWidth(instruction1);
-		float instr2Width = instructionFont.stringWidth(instruction2);
-		float instr3Width = instructionFont.stringWidth(instruction3);
-
-		// Draw centered
-		titleFont.drawString(title, centerX - titleWidth / 2, 200);
-		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
-		instructionFont.drawString(instruction2, centerX - instr2Width / 2, 400);
-		instructionFont.drawString(instruction3, centerX - instr3Width / 2, 500);
+		displayMainMenu();
 	}
 	else if (restart && !dragging_mode && !classic_mode) {
 
-		string title = "SELECT GAME MODE";
-		string instruction1 = "[1] Classic Mode : fixed lander starting position";
-		string instruction2 = "[2] Dragging Mode : drag lander to desired starting position";
-
-		// Measure string widths for centering
-		float titleWidth = titleFont.stringWidth(title);
-		float instr1Width = instructionFont.stringWidth(instruction1);
-		float instr2Width = instructionFont.stringWidth(instruction2);
-
-		// Draw centered
-		titleFont.drawString(title, centerX - titleWidth / 2, 200);
-		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
-		instructionFont.drawString(instruction2, centerX - instr2Width / 2, 400);
+		displayModes();
 	}
 	else {
-		glDepthMask(false);
-
-		backgroundImg.draw(0, 0, ofGetWidth(), ofGetHeight());
-		if (!bHide) gui.draw();
-		
-		glDepthMask(true);
-
-		if (dragging_mode) {
-			string drag_instr = "Welcome to dragging mode! Drag the lander to your desired starting position.\nThe game will begin once you press arrows or awsd keys and dragging will be disabled.";
-
-			float x = 220;
-			float y = 25;
-			ofSetColor(ofColor::white);
-			ofDrawBitmapString(drag_instr, x, y);
-		}
-
-		if (altitude_toggle) {
-			ostringstream oss;
-			oss << fixed << setprecision(1) << "Altitude is " << altitude;
-			string altitude_str = oss.str();
-
-			float x = ofGetWidth() - 140;
-			float y = 20;
-			ofSetColor(ofColor::white);
-			ofDrawBitmapString(altitude_str, x, y);
-		}
-
-		std::string fuel_info = "Current fuel: " + to_string(fuel);
-		int textWidth = 8 * fuel_info.length();
-		int textHeight = 12;
-
-		int x = ofGetWidth() - textWidth - 10;
-		int y = ofGetHeight() - 10;
-		ofSetColor(ofColor::white);
-		ofDrawBitmapString(fuel_info, x, y);
+		printInfo();
 
 		if (fuel == 0) {
 			lost = true;
@@ -574,7 +484,7 @@ void ofApp::keyPressed(int key) {
 		if (restart && !classic_mode && !dragging_mode) {
 			classic_mode = true;
 			dragging_mode = false;
-			setUpClassicMode();
+			setupClassicMode();
 		}
 		break;
 	case '2':
@@ -697,6 +607,8 @@ void ofApp::keyPressed(int key) {
 	}
 }
 
+//--------------------------------------------------------------
+
 void ofApp::triggerExhaust() {
 	//start exhaust emitter
 	exhaustemitter.sys->reset();
@@ -704,18 +616,24 @@ void ofApp::triggerExhaust() {
 	exhausttimer = ofGetElapsedTimeMillis();
 }
 
+//--------------------------------------------------------------
+
 void ofApp::triggerExplosion(glm::vec3& explosionpoint) {
 	//set the position of the explosion emitter to the terrain point
 	explosionemitter.setPosition(explosionpoint);
+
 	//start the explosion
 	explosionemitter.start();
+
 	cout << "Explosion emitter started: " << explosionemitter.started << endl;
 	cout << "Explosion emitter particle system size: " << explosionemitter.sys->particles.size() << endl;
-	//explosionemitter.update();
+
 	//set flag to true
 	explosiontriggered = true;
+
 	//set explosion timer 
 	explosiontimer = ofGetElapsedTimeMillis();
+
 	cout << "Explosion triggered at: " << explosionemitter.getPosition() << endl;
 }
 
@@ -1114,7 +1032,6 @@ void ofApp::moveBackwards() {
 
 //--------------------------------------------------------------
 
-//Adds positive torque to rotate the player right
 void ofApp::rotateRight() {
 	shipRotation -= 5; // degrees
 
@@ -1127,7 +1044,6 @@ void ofApp::rotateRight() {
 
 //--------------------------------------------------------------
 
-//Adds negative torque to rotate the player left
 void ofApp::rotateLeft() {
 	shipRotation += 5; // degrees
 
@@ -1145,10 +1061,14 @@ glm::vec3 ofApp::getHeadingVector(float degrees) {
 	return glm::vec3(-sin(radians), 0, -cos(radians));
 }
 
+//--------------------------------------------------------------
+
 glm::vec3 ofApp::getRightVector(float degrees) {
 	float radians = glm::radians(degrees);
 	return glm::vec3(cos(radians), 0, -sin(radians));
 }
+
+//--------------------------------------------------------------
 
 void ofApp::checkCollision() {
 	ofVec3f min = lander.getSceneMin() + lander.getPosition();
@@ -1169,7 +1089,7 @@ void ofApp::checkCollision() {
 
 //--------------------------------------------------------------
 
-void ofApp::setUpClassicMode() {
+void ofApp::setupClassicMode() {
 	if (restart && classic_mode) {
 		bLanderLoaded = true;
 		lander.setScaleNormalization(false);
@@ -1280,4 +1200,135 @@ bool ofApp::checkLanding() {
 	bool landedOnDisk3 = distance3 <= landingRadius;
 
 	return landedOnDisk1 || landedOnDisk2 || landedOnDisk3;
+}
+
+//--------------------------------------------------------------
+
+void ofApp::displayMainMenu() {
+	ofBackground(ofColor::black);
+	float centerX = ofGetWidth() / 2.0;
+
+	ofDisableLighting();
+	ofBackground(20); // dark background
+	ofSetColor(255);  // white text
+
+	string title = "3D LANDER GAME";
+	string instruction1 = "Press E to Start, and Q to quit";
+	string instruction2 = "Use Arrow Keys and AWSD Keys to Move";
+	string instruction3 = "Use T, Y, and C for camera controls.";
+
+	// Measure string widths for centering
+	float titleWidth = titleFont.stringWidth(title);
+	float instr1Width = instructionFont.stringWidth(instruction1);
+	float instr2Width = instructionFont.stringWidth(instruction2);
+	float instr3Width = instructionFont.stringWidth(instruction3);
+
+	// Draw centered
+	titleFont.drawString(title, centerX - titleWidth / 2, 200);
+	instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+	instructionFont.drawString(instruction2, centerX - instr2Width / 2, 400);
+	instructionFont.drawString(instruction3, centerX - instr3Width / 2, 500);
+}
+
+void ofApp::displayModes() {
+	ofBackground(ofColor::black);
+	float centerX = ofGetWidth() / 2.0;
+	string title = "SELECT GAME MODE";
+	string instruction1 = "[1] Classic Mode : fixed lander starting position";
+	string instruction2 = "[2] Dragging Mode : drag lander to desired starting position";
+
+	// Measure string widths for centering
+	float titleWidth = titleFont.stringWidth(title);
+	float instr1Width = instructionFont.stringWidth(instruction1);
+	float instr2Width = instructionFont.stringWidth(instruction2);
+
+	// Draw centered
+	titleFont.drawString(title, centerX - titleWidth / 2, 200);
+	instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+	instructionFont.drawString(instruction2, centerX - instr2Width / 2, 400);
+}
+
+void ofApp::displayWin() {
+	ofBackground(ofColor::black);
+	float centerX = ofGetWidth() / 2.0;
+	ofDisableLighting();
+	ofSetColor(255);  // white text
+
+	string title = "YOU WIN!";
+	string instruction1 = "Press Q to quit to Main Menu";
+
+	// Measure string widths for centering
+	float titleWidth = titleFont.stringWidth(title);
+	float instr1Width = instructionFont.stringWidth(instruction1);
+
+	// Draw centered
+	titleFont.drawString(title, centerX - titleWidth / 2, 200);
+	instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+}
+
+void ofApp::displayLoss() {
+	ofBackground(ofColor::black);
+	float centerX = ofGetWidth() / 2.0;
+	ofDisableLighting();
+	ofSetColor(255);  // white text
+
+	string title = "GAME OVER";
+	string loss_reason;
+
+	if (fuel == 0) {
+		loss_reason = "Ran out of fuel!";
+	}
+	else {
+		loss_reason = "Landing was too forceful!";
+	}
+
+	string instruction1 = "Press Q to quit to Main Menu";
+
+	// Measure string widths for centering
+	float titleWidth = titleFont.stringWidth(title);
+	float instr1Width = instructionFont.stringWidth(instruction1);
+	float lossRWidth = instructionFont.stringWidth(loss_reason);
+
+	// Draw centered
+	titleFont.drawString(title, centerX - titleWidth / 2, 200);
+	instructionFont.drawString(loss_reason, centerX - lossRWidth / 2, 300);
+	instructionFont.drawString(instruction1, centerX - instr1Width / 2, 400);
+}
+
+void ofApp::printInfo() {
+	glDepthMask(false);
+
+	backgroundImg.draw(0, 0, ofGetWidth(), ofGetHeight());
+	if (!bHide) gui.draw();
+
+	glDepthMask(true);
+
+	if (dragging_mode) {
+		string drag_instr = "Welcome to dragging mode! Drag the lander to your desired starting position.\nThe game will begin once you press arrows or awsd keys and dragging will be disabled.";
+
+		float x = 220;
+		float y = 25;
+		ofSetColor(ofColor::white);
+		ofDrawBitmapString(drag_instr, x, y);
+	}
+
+	if (altitude_toggle) {
+		ostringstream oss;
+		oss << fixed << setprecision(1) << "Altitude is " << altitude;
+		string altitude_str = oss.str();
+
+		float x = ofGetWidth() - 140;
+		float y = 20;
+		ofSetColor(ofColor::white);
+		ofDrawBitmapString(altitude_str, x, y);
+	}
+
+	std::string fuel_info = "Current fuel: " + to_string(fuel);
+	int textWidth = 8 * fuel_info.length();
+	int textHeight = 12;
+
+	int x = ofGetWidth() - textWidth - 10;
+	int y = ofGetHeight() - 10;
+	ofSetColor(ofColor::white);
+	ofDrawBitmapString(fuel_info, x, y);
 }
