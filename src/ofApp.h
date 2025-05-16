@@ -45,6 +45,8 @@ public:
 	bool checkLanding();
 	void loadVbo();			//vertex buffer
 	bool raySelectWithOctree(ofVec3f&);
+	glm::vec3 getHeadingVector(float);
+	glm::vec3 getRightVector(float);
 
 	ParticleEmitter exhaustemitter;
 	float exhausttimer;
@@ -57,7 +59,9 @@ public:
 	ofShader shader;
 
 	ofCamera* currentCam = nullptr;
+
 	ofEasyCam cam;
+
 	ofCamera followCam; // Camera with view following lander
 	glm::vec3 cameraPosition = glm::vec3(-60, 90, 70);  // fixed position of camera
 
@@ -85,6 +89,10 @@ public:
 	vector<Box> bboxList;
 	vector<ofColor> levelColors;
 	TreeNode selectedNode;
+
+	// heading vector
+	glm::vec3 shipHeading = glm::vec3(0, 0, -1); // initial forward direction
+	float shipRotation = 0; // rotation angle in degrees
 
 	ofVec3f intersectPoint;
 	glm::vec3 mouseDownPos;

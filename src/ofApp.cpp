@@ -140,28 +140,32 @@ void ofApp::update() {
 					exhaustemitter.stop();
 				}
 			}
-			glm::vec3 landerPos = lander.getPosition();
+			
 			float x_land = lander.getPosition().x;
 			float y_land = lander.getPosition().y;
 			float z_land = lander.getPosition().z;
+
+			followCam.lookAt(lander.getPosition());
+			
+			glm::vec3 shipPos = ship.pos;
+			glm::vec3 forward = getHeadingVector(shipRotation);
+			glm::vec3 up(0, 1, 0);
+
+			// Chase cam: slightly behind and above
+			fixedCam1.setPosition(shipPos - forward * 30.0f + glm::vec3(0, 10, 0));
+			fixedCam1.lookAt(shipPos, up);
+
+			// Top-down cam: directly above, looking down
+			fixedCam2.setPosition(shipPos + glm::vec3(0, 50, 0));
+			fixedCam2.lookAt(shipPos, glm::vec3(0, 0, -1));
+
+			// Angled cam: behind and off to the side
+			fixedCam3.setPosition(shipPos - forward * 20.0f + glm::vec3(10, 15, 0));
+			fixedCam3.lookAt(shipPos, up);
+			
 			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
 			
-			followCam.lookAt(lander.getPosition());
-
-			// 1. Top-down cam (above lander, facing down)
-			fixedCam1.setPosition(landerPos + glm::vec3(0, 0, 0));  // 100 units above
-			fixedCam1.lookAt(fixedCam1.getPosition() + glm::vec3(0, -1, 0));  // look straight down
-
-			// 2. Forward-facing cam (behind lander, looking forward along -Z)
-			fixedCam2.setPosition(landerPos + glm::vec3(0, 10, 0));  // behind and slightly above
-			fixedCam2.lookAt(fixedCam2.getPosition() + glm::vec3(0, 0, -1));  // look forward
-
-			// 3. Angled cam (above + behind, looking diagonally down-forward)
-			fixedCam3.setPosition(landerPos + glm::vec3(5, 5, 1));  // above-right-behind
-			fixedCam3.lookAt(fixedCam3.getPosition() + glm::normalize(glm::vec3(0, -0.5, -1)));  // angled
-
 			checkCollision();
-
 			if (bCollisionDetected) {
 				resolveCollision();
 			}
@@ -363,7 +367,7 @@ void ofApp::draw() {
 		// begin drawing in the camera
 		shader.begin();
 
-		shader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
+		shader.setUniformMatrix4f("modelViewProjectionMatrix", currentCam->getModelViewProjectionMatrix());
 		currentCam->begin();
 		particleTex.bind();
 		vbo.draw(GL_POINTS, 0, (int)exhaustemitter.sys->particles.size());
@@ -393,6 +397,8 @@ void ofApp::draw() {
 				ofSetColor(ofColor::white);
 				Octree::drawBox(bounds);
 			}
+
+			ship.rot = shipRotation - 90;
 			ship.draw();
 		}
 		
@@ -463,7 +469,7 @@ void ofApp::keyPressed(int key) {
 		thrusting = true;
 		if (bLanderLoaded) disableDragging = true;
 		exhaustemitter.sys->reset();
-		exhaustemitter.start();
+		if (currentCam == &followCam || currentCam == &cam) exhaustemitter.start();
 		exhausttimer = ofGetElapsedTimeMillis();
 		break;
 	case 's':
@@ -617,7 +623,7 @@ void ofApp::mousePressed(int x, int y, int button) {
 			bLanderSelected = false;
 		}
 
-		bool octHit = raySelectWithOctree(selectedPoint); // ADDED
+		bool octHit = raySelectWithOctree(selectedPoint);
 		if (octHit)
 		{
 			selectPos.x = selectedPoint.x;
@@ -885,60 +891,76 @@ void ofApp::moveDown()
 //--------------------------------------------------------------
 
 void ofApp::moveRight() {
-	glm::vec3 thrustForce = glm::vec3(1, 0, 0);
-
-	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 10;
-	ship.addForce(thrustForce * 10);
+	glm::vec3 thrust = getRightVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 void ofApp::moveLeft() {
-	glm::vec3 thrustForce = glm::vec3(1, 0, 0);
-
-	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 10;
-	ship.addForce(-thrustForce * 10);
+	glm::vec3 thrust = -getRightVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 void ofApp::moveForward() {
-	glm::vec3 thrustForce = glm::vec3(0, 0, 1);
-
-	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 10;
-	ship.addForce(thrustForce * 10);
+	glm::vec3 thrust = -getHeadingVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 void ofApp::moveBackwards() {
-	glm::vec3 thrustForce = glm::vec3(0, 0, 1);
-
-	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 10;
-	ship.addForce(-thrustForce * 10);
+	glm::vec3 thrust = getHeadingVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 //Adds positive torque to rotate the player right
-void ofApp::rotateRight()
-{
-	ship.addTorque(glm::vec3(0, 0, 1000));
+void ofApp::rotateRight() {
+	shipRotation -= 5; // degrees
+
+	float radians = glm::radians(shipRotation);
+	shipHeading.x = sin(radians);
+	shipHeading.z = -cos(radians); // Negative Z is forward
+	shipHeading.y = 0; // flat plane, no pitch
+	shipHeading = glm::normalize(shipHeading);
 }
 
 //--------------------------------------------------------------
 
 //Adds negative torque to rotate the player left
-void ofApp::rotateLeft()
-{
-	ship.addTorque(glm::vec3(0, 0, -1000));
+void ofApp::rotateLeft() {
+	shipRotation += 5; // degrees
+
+	float radians = glm::radians(shipRotation);
+	shipHeading.x = sin(radians);
+	shipHeading.z = -cos(radians); // Negative Z is forward
+	shipHeading.y = 0; // flat plane, no pitch
+	shipHeading = glm::normalize(shipHeading);
 }
 
 //--------------------------------------------------------------
+
+glm::vec3 ofApp::getHeadingVector(float degrees) {
+	float radians = glm::radians(degrees);
+	return glm::vec3(-sin(radians), 0, -cos(radians));
+}
+
+glm::vec3 ofApp::getRightVector(float degrees) {
+	float radians = glm::radians(degrees);
+	return glm::vec3(cos(radians), 0, -sin(radians));
+}
 
 void ofApp::checkCollision() {
 	ofVec3f min = lander.getSceneMin() + lander.getPosition();
@@ -965,7 +987,6 @@ void ofApp::setUpClassicMode() {
 		lander.setScaleNormalization(false);
 		lander.loadModel("geo/atlantis-orbiter.obj");
 
-		//lander.setPosition(0, 0, 0);
 		lander.setPosition(0, 133, 0);
 
 		bboxList.clear();
