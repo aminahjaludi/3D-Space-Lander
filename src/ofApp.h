@@ -9,6 +9,14 @@
 #include "ParticleEmitter.h"
 #include "ParticleSystem.h"
 
+struct LandingPadLights {
+	ofLight keyLight;
+	ofLight fillLight;
+	ofLight rimLight;
+	ofVec3f position; // Landing pad position
+};
+
+
 class ofApp : public ofBaseApp {
 
 public:
@@ -48,6 +56,9 @@ public:
 	void loadVbo();			//vertex buffer for exhaust
 	void loadExplosionVbo(); //vertex buffer for explosion
 	bool checkLanding();
+
+	//function to set up lights
+	void setupLightSystem();
 
 	ParticleEmitter exhaustemitter;
 	ParticleEmitter explosionemitter;
@@ -146,4 +157,6 @@ public:
 	//Sound objects
 	ofSoundPlayer ambient;
 	ofSoundPlayer thrust;
+	//lighting
+	LandingPadLights pads[3];
 };

@@ -44,6 +44,8 @@ void ofApp::setup() {
 	// setup rudimentary lighting 
 	initLightingAndMaterials();
 
+	//set up lighting system
+	setupLightSystem();
 	mars.loadModel("geo/terrain-model.obj");
 	mars.setScaleNormalization(false);
 
@@ -115,6 +117,61 @@ void ofApp::setup() {
 	explosiontriggered = false;
 }
 
+void ofApp::setupLightSystem() {
+	//store the positions of the landing spots
+	ofVec3f positions[3] = {
+		ofVec3f(-2.104, 5.376, -125.309),
+		ofVec3f(101.439, -2.432, 96.568),
+		ofVec3f(-154.609, 65.377, 130.132)
+	};
+
+	//iterate through all of the landing positions to assign each with a keylight, filllight and rimlight
+	for (int i = 0; i < 3; i++) {
+		pads[i].position = positions[i];
+
+		// Key Light Setup
+		pads[i].keyLight.setup();
+		pads[i].keyLight.enable();
+		pads[i].keyLight.setAreaLight(1, 1);
+		pads[i].keyLight.setDiffuseColor(ofFloatColor(0.7, 0.9, 1.0)); // Light blue tint
+		pads[i].keyLight.setAmbientColor(ofFloatColor(0.2, 0.2, 0.2)); // Soft ambient light
+		pads[i].keyLight.setSpecularColor(ofFloatColor(1.0, 1.0, 1.0)); // Bright reflections
+
+		pads[i].keyLight.setPosition(pads[i].position.x + 5, pads[i].position.y + 10, pads[i].position.z + 5);
+		pads[i].keyLight.rotate(35, ofVec3f(0, 1, 0));
+		pads[i].keyLight.rotate(-45, ofVec3f(1, 0, 0));
+
+		// Fill Light Setup
+		pads[i].fillLight.setup();
+		pads[i].fillLight.enable();
+		pads[i].fillLight.setPointLight();
+		pads[i].fillLight.setAttenuation(3, .01, .01);
+		pads[i].fillLight.setDiffuseColor(ofFloatColor(1.0, 1.0, 1.0)); // Pure white to balance shadows
+		pads[i].fillLight.setAmbientColor(ofFloatColor(0.3, 0.3, 0.3)); // Brightens overall scene
+		pads[i].fillLight.setSpecularColor(ofFloatColor(1.0, 1.0, 1.0)); // Strong highlights
+
+		pads[i].fillLight.setPosition(pads[i].position.x + 1, pads[i].position.y + 1, pads[i].position.z + 5);
+		pads[i].fillLight.rotate(30, ofVec3f(1, 0, 0));
+		pads[i].fillLight.rotate(-45, ofVec3f(0, 1, 0));
+
+		// Rim Light Setup
+		pads[i].rimLight.setup();
+		pads[i].rimLight.enable();
+		pads[i].rimLight.setSpotlight();
+		pads[i].rimLight.setScale(.05);
+		pads[i].rimLight.setSpotlightCutOff(30);
+		pads[i].rimLight.setAttenuation(.5, .001, .001);
+		pads[i].rimLight.setDiffuseColor(ofFloatColor(0.8, 0.9, 1.0)); // Light blue glow
+		pads[i].rimLight.setAmbientColor(ofFloatColor(0.2, 0.2, 0.2)); // Minimal ambient effect
+		pads[i].rimLight.setSpecularColor(ofFloatColor(1.0, 1.0, 1.0)); // Sharp reflections
+
+		pads[i].rimLight.setPosition(pads[i].position.x, pads[i].position.y + 1, pads[i].position.z - 4);
+		pads[i].rimLight.rotate(50, ofVec3f(1, 0, 0));
+		pads[i].rimLight.rotate(180, ofVec3f(0, 1, 0));
+	}
+
+}
+
 // load vertex buffer in preparation for rendering the exhaust emitter
 //
 void ofApp::loadVbo() {
@@ -178,7 +235,7 @@ void ofApp::update() {
 					cout << "Particles were never created!" << endl;
 				}
 
-				if (timer > 0) { 
+				if (timer > 2000) { 
 					explosiontriggered = false;
 					explosionemitter.stop();
 				}
@@ -296,7 +353,7 @@ void ofApp::draw() {
 	// Get window center
 	float centerX = ofGetWidth() / 2.0;
 
-	if (won && ofGetElapsedTimef() - game_endt >= 1.5f) {
+	if (won && ofGetElapsedTimef() - game_endt >= 5.5f) {
 		ofDisableLighting();
 		ofSetColor(255);  // white text
 
@@ -452,6 +509,7 @@ void ofApp::draw() {
 			currentCam->end();
 			explosionshader.end();
 		}
+		ofEnablePointSprites();
 
 		currentCam->begin();
 		ofPushMatrix();
@@ -627,7 +685,7 @@ void ofApp::triggerExplosion(glm::vec3& explosionpoint) {
 	explosionemitter.start();
 	cout << "Explosion emitter started: " << explosionemitter.started << endl;
 	cout << "Explosion emitter particle system size: " << explosionemitter.sys->particles.size() << endl;
-	explosionemitter.update();
+	//explosionemitter.update();
 	//set flag to true
 	explosiontriggered = true;
 	//set explosion timer 
