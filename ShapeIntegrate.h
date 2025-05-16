@@ -24,6 +24,8 @@ public:
     glm::vec3 force = glm::vec3(0, 0, 0);
 
     glm::vec3 prev_force = glm::vec3(0, 0, 0);
+    glm::vec3 prev_velocity = glm::vec3(0, 0, 0);
+
 };
 
 
@@ -55,6 +57,7 @@ void ShapeIntegrate::integrator() {
     accel = force / mass;
 
     prev_force = force;
+    prev_velocity = velocity;
 
     //Reset torque and force
     torque = glm::vec3(0, 0, 0);

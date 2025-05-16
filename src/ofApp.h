@@ -43,19 +43,25 @@ public:
 	void moveLeft();
 	void moveForward();
 	void moveBackwards();
+	void triggerExplosion(glm::vec3&);	//triggers explosion when rocket crashes with terrain at a high force
+	void triggerExhaust();
 
-	void loadVbo();			//vertex buffer
+	void loadVbo();			//vertex buffer for exhaust
+	void loadExplosionVbo(); //vertex buffer for explosion
 
 	ParticleEmitter exhaustemitter;
+	ParticleEmitter explosionemitter;
+	bool explosiontriggered;
 
 	float exhausttimer;
+	float explosiontimer;
 
 	// textures
 	ofTexture  particleTex;
 
 	// shaders
-	ofVbo vbo;
-	ofShader shader;
+	ofVbo vbo, explosionvbo;
+	ofShader shader, explosionshader;
 
 	ofEasyCam cam;
 	ofLight light;

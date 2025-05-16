@@ -440,6 +440,12 @@
     <ClInclude Include="src\TransformObject.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="ShapeIntegrate.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="SpacecraftShape.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />

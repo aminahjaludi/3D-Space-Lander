@@ -190,7 +190,7 @@ void ParticleEmitter::spawn(float time) {
 	case RadialEmitter:
 	{
 		ofVec3f dir = ofVec3f(ofRandom(-1, 1), ofRandom(-1, 1), ofRandom(-1, 1));
-		float speed = velocity.length();
+		float speed = ofRandom(100, 200);
 		particle.velocity = dir.getNormalized() * speed;
 		particle.position.set(position);
 	}
