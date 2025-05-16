@@ -128,9 +128,10 @@ public:
 	bool won = false;
 	bool disableDragging = false;
 	bool thrusting = false;
-
+	
 	int fuel = 120; //2 minutes of fuel
 	uint64_t lastDecrementTime = 0;
+	float game_endt = 0;
 	int decrementInterval = 1000; //1 second in milliseconds
 
 	//Sound objects

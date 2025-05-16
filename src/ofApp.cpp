@@ -239,7 +239,7 @@ void ofApp::draw() {
 	// Get window center
 	float centerX = ofGetWidth() / 2.0;
 
-	if (won && ofGetElapsedTimef() >= 1.5) {
+	if (won && ofGetElapsedTimef() - game_endt >= 1.5f) {
 		ofDisableLighting();
 		ofSetColor(255);  // white text
 
@@ -254,7 +254,7 @@ void ofApp::draw() {
 		titleFont.drawString(title, centerX - titleWidth / 2, 200);
 		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
 	}
-	if (lost && ofGetElapsedTimef() >= 1.5) {
+	if (lost && ofGetElapsedTimef() - game_endt >= 1.5f) {
 		ofDisableLighting();
 		ofSetColor(255);  // white text
 
@@ -437,6 +437,7 @@ void ofApp::keyPressed(int key) {
 		dragging_mode = false;
 		disableDragging = false;
 		fuel = 120;
+		ofResetElapsedTimeCounter();
 		break;
 	case 'e':
 	case 'E':
@@ -595,9 +596,6 @@ void ofApp::mouseMoved(int x, int y) {
 //--------------------------------------------------------------
 
 void ofApp::mousePressed(int x, int y, int button) {
-
-	// if moving camera, don't allow mouse interaction
-	if (cam.getMouseInputEnabled()) return;
 
 	// if moving camera, don't allow mouse interaction
 	if (cam.getMouseInputEnabled()) return;
@@ -826,7 +824,8 @@ glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 planePt, glm::vec3 planeNorm) {
 void ofApp::resolveCollision() {
 	
 	if (ship.prev_force.y < -4 || altitude < 0) { //Loss
-		ofResetElapsedTimeCounter();
+		//ofResetElapsedTimeCounter();
+		game_endt = ofGetElapsedTimef();
 		lost = true;
 		glm::vec3 impulseForce = glm::vec3(1, 1, 0);
 
@@ -840,7 +839,8 @@ void ofApp::resolveCollision() {
 		bool landed = checkLanding();
 
 		if (landed) {
-			ofResetElapsedTimeCounter();
+			//ofResetElapsedTimeCounter();
+			game_endt = ofGetElapsedTimef();
 			won = true;
 			return;
 		}
