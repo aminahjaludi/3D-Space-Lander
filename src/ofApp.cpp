@@ -16,12 +16,30 @@ void ofApp::setup() {
 	cam.setNearClip(.1);
 	cam.setFov(65.5);
 	
+	followCam.setPosition(cameraPosition);
+
+	fixedCam1.setNearClip(0.1);
+	fixedCam1.setFarClip(1000);
+	fixedCam2.setNearClip(0.1);
+	fixedCam2.setFarClip(1000);
+	fixedCam3.setNearClip(0.1);
+	fixedCam3.setFarClip(1000);
+
 	ofSetVerticalSync(true);
 	cam.disableMouseInput();
 	ofEnableSmoothing();
 	ofEnableDepthTest();
 
+	currentCam = &cam;
 
+	ambient.load("ambient.mp3");
+	ambient.setVolume(0.7);
+	ambient.setLoop(true);
+	ambient.play();
+
+	thrust.load("thrust.wav");
+	thrust.setVolume(0.2);
+	thrust.setLoop(false);
 
 	// setup rudimentary lighting 
 	initLightingAndMaterials();
@@ -178,27 +196,53 @@ void ofApp::update() {
 					exhaustemitter.sys->particles.clear();  
 				}
 			}
+			
 			float x_land = lander.getPosition().x;
 			float y_land = lander.getPosition().y;
 			float z_land = lander.getPosition().z;
-			//on every update set the emitters to or near the psotion of the rocket
-			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
-			//cout << lander.getPosition() << endl;
-			checkCollision();
 
+			followCam.lookAt(lander.getPosition());
+			
+			glm::vec3 shipPos = ship.pos;
+			glm::vec3 forward = getHeadingVector(shipRotation);
+			glm::vec3 up(0, 1, 0);
+
+			// Chase cam: slightly behind and above
+			fixedCam1.setPosition(shipPos - forward * 30.0f + glm::vec3(0, 10, 0));
+			fixedCam1.lookAt(shipPos, up);
+
+			// Top-down cam: directly above, looking down
+			fixedCam2.setPosition(shipPos + glm::vec3(0, 50, 0));
+			fixedCam2.lookAt(shipPos, glm::vec3(0, 0, -1));
+
+			// Angled cam: behind and off to the side
+			fixedCam3.setPosition(shipPos - forward * 20.0f + glm::vec3(10, 15, 0));
+			fixedCam3.lookAt(shipPos, up);
+			
+			exhaustemitter.setPosition(glm::vec3(x_land, y_land + 1, z_land));
+			
+			checkCollision();
 			if (bCollisionDetected) {
 				resolveCollision();
 			}
 
 			calculateAltitude();
+			if (thrusting) {
+				uint64_t now = ofGetElapsedTimeMillis();
+				if (now - lastDecrementTime >= decrementInterval && fuel > 0) {
+					fuel--; // decrement
+					lastDecrementTime = now;
+				}
+			}
 
-			//Move lander in accordance to key pressed
-			//if (altitude > 0) {
+			if (!lost && fuel > 0) {
 				if (w_pressed) {
 					moveUp();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (s_pressed) {
 					moveDown();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (d_pressed) {
 					rotateRight();
@@ -208,26 +252,29 @@ void ofApp::update() {
 				}
 				if (up_pressed) {
 					moveBackwards();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (down_pressed) {
 					moveForward();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (right_pressed) {
 					moveRight();
+					if (!thrust.isPlaying()) thrust.play();
 				}
 				if (left_pressed) {
 					moveLeft();
+					if (!thrust.isPlaying()) thrust.play();
 				}
-
-				applyExternalForces();
-				ship.integrator();
-				exhaustemitter.update();
-
-				lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
-				lander.setRotation(0, ship.rot, 0, 1, 0);
 			}
+			applyExternalForces();
+			ship.integrator();
+			exhaustemitter.update();
+
+			lander.setPosition(ship.pos.x, ship.pos.y, ship.pos.z);
+			lander.setRotation(0, ship.rot, 0, 1, 0);
+		}
 			
-		//}
 	}
 	else {
 		lander.clear();
@@ -270,15 +317,26 @@ void ofApp::draw() {
 		ofSetColor(255);  // white text
 
 		string title = "GAME OVER";
+		string loss_reason;
+
+		if (fuel == 0) {
+			loss_reason = "Ran out of fuel!";
+		}
+		else {
+			loss_reason = "Landing was too forceful!";
+		}
+
 		string instruction1 = "Press Q to quit to Main Menu";
 
 		// Measure string widths for centering
 		float titleWidth = titleFont.stringWidth(title);
 		float instr1Width = instructionFont.stringWidth(instruction1);
+		float lossRWidth = instructionFont.stringWidth(loss_reason);
 
 		// Draw centered
 		titleFont.drawString(title, centerX - titleWidth / 2, 200);
-		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
+		instructionFont.drawString(loss_reason, centerX - lossRWidth / 2, 300);
+		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 400);
 	}
 	else if (!restart) {
 		ofDisableLighting();
@@ -288,16 +346,19 @@ void ofApp::draw() {
 		string title = "3D LANDER GAME";
 		string instruction1 = "Press E to Start, and Q to quit";
 		string instruction2 = "Use Arrow Keys and AWSD Keys to Move";
+		string instruction3 = "Use T, Y, and C for camera controls.";
 
 		// Measure string widths for centering
 		float titleWidth = titleFont.stringWidth(title);
 		float instr1Width = instructionFont.stringWidth(instruction1);
 		float instr2Width = instructionFont.stringWidth(instruction2);
+		float instr3Width = instructionFont.stringWidth(instruction3);
 
 		// Draw centered
 		titleFont.drawString(title, centerX - titleWidth / 2, 200);
 		instructionFont.drawString(instruction1, centerX - instr1Width / 2, 300);
 		instructionFont.drawString(instruction2, centerX - instr2Width / 2, 400);
+		instructionFont.drawString(instruction3, centerX - instr3Width / 2, 500);
 	}
 	else if (restart && !dragging_mode && !classic_mode) {
 
@@ -342,31 +403,38 @@ void ofApp::draw() {
 			ofSetColor(ofColor::white);
 			ofDrawBitmapString(altitude_str, x, y);
 		}
-		ofPushMatrix();
+
+		std::string fuel_info = "Current fuel: " + to_string(fuel);
+		int textWidth = 8 * fuel_info.length();
+		int textHeight = 12;
+
+		int x = ofGetWidth() - textWidth - 10;
+		int y = ofGetHeight() - 10;
+		ofSetColor(ofColor::white);
+		ofDrawBitmapString(fuel_info, x, y);
+
+		if (fuel == 0) {
+			lost = true;
+			won = false;
+		}
+
 		// this makes everything look glowy :)
-		//
 		ofEnableBlendMode(OF_BLENDMODE_ADD);
 		ofEnablePointSprites();
 
-
 		// begin drawing in the camera
-		//
 		shader.begin();
-		shader.setUniformTexture("tex", particleTex, 0); 
-		shader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
-		cam.begin();
+
+		shader.setUniformTexture("tex", particleTex, 0);
+		shader.setUniformMatrix4f("modelViewProjectionMatrix", currentCam->getModelViewProjectionMatrix());
+		currentCam->begin();
+
 		particleTex.bind();
 		vbo.draw(GL_POINTS, 0, (int)exhaustemitter.sys->particles.size());
-		//exhaustemitter.draw();
+		
 		particleTex.unbind();
-		cam.end();
+		currentCam->end();
 		shader.end();
-	/*	if (exhaustemitter.sys->particles.size() == 0) {
-			cout<< "No exhaust particles available.";
-		}
-		else {
-			cout << "Rendering " << exhaustemitter.sys->particles.size() << " exhaust particles.";
-		}*/
 
 		//if explosion has been trigeered, use vertex buffer to draw explosion particles
 		if (explosiontriggered)
@@ -374,30 +442,25 @@ void ofApp::draw() {
 			loadExplosionVbo();
 			explosionshader.begin();
 			explosionshader.setUniformTexture("tex", particleTex, 0);
-			explosionshader.setUniformMatrix4f("modelViewProjectionMatrix", cam.getModelViewProjectionMatrix());
-			cam.begin();
+			explosionshader.setUniformMatrix4f("modelViewProjectionMatrix", currentCam->getModelViewProjectionMatrix());
+			currentCam->begin();
 			particleTex.bind();
 			cout << "Particles before drawing: " << explosionemitter.sys->particles.size() << endl;
 
 			explosionvbo.draw(GL_POINTS, 0, (int)explosionemitter.sys->particles.size());
 
 			particleTex.unbind();
-			cam.end();
+			currentCam->end();
 			explosionshader.end();
 		}
 
-		ofDisablePointSprites();
-		ofDisableBlendMode();
-		ofEnableAlphaBlending();
-	
-		ofPopMatrix();
-		cam.begin();
+		currentCam->begin();
 		ofPushMatrix();
 
 		ofEnableLighting(); // shaded mode
 		mars.drawFaces();
 		ofMesh mesh;
-		if (bLanderLoaded) {
+		if (bLanderLoaded && (currentCam == &followCam || currentCam == &cam)) {
 			lander.drawFaces();
 			
 			if (bLanderSelected) {
@@ -408,12 +471,14 @@ void ofApp::draw() {
 				ofSetColor(ofColor::white);
 				Octree::drawBox(bounds);
 			}
+
+			ship.rot = shipRotation - 90;
 			ship.draw();
 		}
 		
 		ofDisableLighting();
 		ofPopMatrix();
-		cam.end();
+		currentCam->end();
 	}
 
 }
@@ -445,6 +510,7 @@ void ofApp::keyPressed(int key) {
 		classic_mode = false;
 		dragging_mode = false;
 		disableDragging = false;
+		fuel = 120;
 		break;
 	case 'e':
 	case 'E':
@@ -454,53 +520,52 @@ void ofApp::keyPressed(int key) {
 		break;
 	case OF_KEY_UP:
 		up_pressed = true;
-		//trigger exhaust
-		triggerExhaust();
+		thrusting = true;
+        if (bLanderLoaded) disableDragging = true;
+		triggerExhaust(); //trigger exhaust
 		break;
 	case OF_KEY_DOWN:
 		down_pressed = true;
-		//trigger exhaust
-		triggerExhaust();
-    disableDragging = true;
+        thrusting = true;
+        if (bLanderLoaded) disableDragging = true;
+		triggerExhaust(); //trigger exhaust
 		break;
 	case OF_KEY_RIGHT:
 		right_pressed = true;
-		//trigger exhaust
-		triggerExhaust();
-      disableDragging = true;
+		thrusting = true;
+        if (bLanderLoaded) disableDragging = true;
+		triggerExhaust(); //trigger exhaust
 		break;
 	case OF_KEY_LEFT:
 		left_pressed = true;
-		//trigger exhaust
-		triggerExhaust();
-    disableDragging = true;
+		thrusting = true;
+        if (bLanderLoaded) disableDragging = true;
+		triggerExhaust(); //trigger exhaust
 		break;
 	case 'w':
 	case 'W':
 		w_pressed = true;
-		//trigger exhaust
-		triggerExhaust();
-		disableDragging = true;
-		exhaustemitter.sys->reset();
-		exhaustemitter.start();
-		exhausttimer = ofGetElapsedTimeMillis();
-		break;
+		triggerExhaust(); //trigger exhaust
+		thrusting = true;
+        if (bLanderLoaded) disableDragging = true;
+        break;
 	case 's':
 	case 'S':
 		s_pressed = true;
-		//trigger exhaust
-		//triggerExhaust();
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'd':
 	case 'D':
 		d_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'a':
 	case 'A':
 		a_pressed = true;
-		disableDragging = true;
+		thrusting = true;
+		if (bLanderLoaded) disableDragging = true;
 		break;
 	case 'C':
 	case 'c':
@@ -514,8 +579,31 @@ void ofApp::keyPressed(int key) {
 	case 'r':
 		cam.reset();
 		break;
+	case 'T':
 	case 't':
-		setCameraTarget();
+		if (currentCam == &cam)
+		{
+			currentCam = &followCam;
+		}
+		else
+		{
+			currentCam = &cam;
+		}
+		break;
+	case 'Y':
+	case 'y':
+		if (currentCam == &fixedCam1)
+		{
+			currentCam = &fixedCam2;
+		}
+		else if (currentCam == &fixedCam2)
+		{
+			currentCam = &fixedCam3;
+		}
+		else
+		{
+			currentCam = &fixedCam1;
+		}
 		break;
 	case OF_KEY_ALT:
 		cam.enableMouseInput();
@@ -528,7 +616,7 @@ void ofApp::keyPressed(int key) {
 void ofApp::triggerExhaust() {
 	//start exhaust emitter
 	exhaustemitter.sys->reset();
-	exhaustemitter.start();
+	if (currentCam == &followCam || currentCam == &cam) exhaustemitter.start();
 	exhausttimer = ofGetElapsedTimeMillis();
 }
 
@@ -554,40 +642,42 @@ void ofApp::keyReleased(int key) {
 	switch (key) {
 	case OF_KEY_UP:
 		up_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_DOWN:
 		down_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_RIGHT:
 		right_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_LEFT:
 		left_pressed = false;
+		thrusting = false;
 		break;
 	case 'w':
 	case 'W':
 		w_pressed = false;
+		thrusting = false;
 		break;
 	case 's':
 	case 'S':
 		s_pressed = false;
+		thrusting = false;
 		break;
 	case 'd':
 	case 'D':
 		d_pressed = false;
+		thrusting = false;
 		break;
 	case 'a':
 	case 'A':
 		a_pressed = false;
+		thrusting = false;
 		break;
 	case OF_KEY_ALT:
 		cam.disableMouseInput();
-		break;
-	case ' ':
-		/*cout << "distance: " << cam.getDistance() << endl;
-		cout << "pos: " << cam.getPosition() << endl;
-		cout << "global pos: " << cam.getGlobalPosition() << endl;
-		cout << "global ori: " << cam.getGlobalOrientation() << endl;*/
 		break;
 	default:
 		break;
@@ -625,12 +715,40 @@ void ofApp::mousePressed(int x, int y, int button) {
 		if (hit) {
 			bLanderSelected = true;
 			mouseDownPos = getMousePointOnPlane(lander.getPosition(), cam.getZAxis());
+			cam.lookAt(lander.getPosition());
 			bInDrag = true;
 		}
 		else {
 			bLanderSelected = false;
 		}
+
+		bool octHit = raySelectWithOctree(selectedPoint);
+		if (octHit)
+		{
+			selectPos.x = selectedPoint.x;
+			selectPos.y = selectedPoint.y;
+			selectPos.z = selectedPoint.z;
+			cam.lookAt(selectPos);
+		}
 	}
+}
+
+//--------------------------------------------------------------
+
+bool ofApp::raySelectWithOctree(ofVec3f& pointRet) {
+	ofVec3f mouse(mouseX, mouseY);
+	ofVec3f rayPoint = cam.screenToWorld(mouse);
+	ofVec3f rayDir = rayPoint - cam.getPosition();
+	rayDir.normalize();
+	Ray ray = Ray(Vector3(rayPoint.x, rayPoint.y, rayPoint.z),
+		Vector3(rayDir.x, rayDir.y, rayDir.z));
+
+	pointSelected = octree.intersect(ray, octree.root, selectedNode);
+
+	if (pointSelected) {
+		pointRet = octree.mesh.getVertex(selectedNode.points[0]);
+	}
+	return pointSelected;
 }
 
 //--------------------------------------------------------------
@@ -673,13 +791,6 @@ void ofApp::mouseDragged(int x, int y, int button) {
 
 void ofApp::mouseReleased(int x, int y, int button) {
 	bInDrag = false;
-}
-
-//--------------------------------------------------------------
-
-// Set the camera to use the selected point as it's new target
-void ofApp::setCameraTarget() {
-
 }
 
 //--------------------------------------------------------------
@@ -885,60 +996,76 @@ void ofApp::moveDown()
 //--------------------------------------------------------------
 
 void ofApp::moveRight() {
-	glm::vec3 thrustForce = glm::vec3(1, 0, 0);
-
-	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 10;
-	ship.addForce(thrustForce * 10);
+	glm::vec3 thrust = getRightVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 void ofApp::moveLeft() {
-	glm::vec3 thrustForce = glm::vec3(1, 0, 0);
-
-	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 10;
-	ship.addForce(-thrustForce * 10);
+	glm::vec3 thrust = -getRightVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 void ofApp::moveForward() {
-	glm::vec3 thrustForce = glm::vec3(0, 0, 1);
-
-	thrustForce *= ship.thrust;
-	ship.velocity += thrustForce * 10;
-	ship.addForce(thrustForce * 10);
+	glm::vec3 thrust = -getHeadingVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 void ofApp::moveBackwards() {
-	glm::vec3 thrustForce = glm::vec3(0, 0, 1);
-
-	thrustForce *= ship.thrust;
-	ship.velocity -= thrustForce * 10;
-	ship.addForce(-thrustForce * 10);
+	glm::vec3 thrust = getHeadingVector(shipRotation);
+	thrust *= ship.thrust;
+	ship.addForce(thrust * 10.0f);
+	ship.velocity += thrust * 10.0f;
 }
 
 //--------------------------------------------------------------
 
 //Adds positive torque to rotate the player right
-void ofApp::rotateRight()
-{
-	ship.addTorque(glm::vec3(0, 0, 1000));
+void ofApp::rotateRight() {
+	shipRotation -= 5; // degrees
+
+	float radians = glm::radians(shipRotation);
+	shipHeading.x = sin(radians);
+	shipHeading.z = -cos(radians); // Negative Z is forward
+	shipHeading.y = 0; // flat plane, no pitch
+	shipHeading = glm::normalize(shipHeading);
 }
 
 //--------------------------------------------------------------
 
 //Adds negative torque to rotate the player left
-void ofApp::rotateLeft()
-{
-	ship.addTorque(glm::vec3(0, 0, -1000));
+void ofApp::rotateLeft() {
+	shipRotation += 5; // degrees
+
+	float radians = glm::radians(shipRotation);
+	shipHeading.x = sin(radians);
+	shipHeading.z = -cos(radians); // Negative Z is forward
+	shipHeading.y = 0; // flat plane, no pitch
+	shipHeading = glm::normalize(shipHeading);
 }
 
 //--------------------------------------------------------------
+
+glm::vec3 ofApp::getHeadingVector(float degrees) {
+	float radians = glm::radians(degrees);
+	return glm::vec3(-sin(radians), 0, -cos(radians));
+}
+
+glm::vec3 ofApp::getRightVector(float degrees) {
+	float radians = glm::radians(degrees);
+	return glm::vec3(cos(radians), 0, -sin(radians));
+}
 
 void ofApp::checkCollision() {
 	ofVec3f min = lander.getSceneMin() + lander.getPosition();
@@ -965,7 +1092,6 @@ void ofApp::setUpClassicMode() {
 		lander.setScaleNormalization(false);
 		lander.loadModel("geo/atlantis-orbiter.obj");
 
-		//lander.setPosition(0, 0, 0);
 		lander.setPosition(0, 133, 0);
 
 		bboxList.clear();

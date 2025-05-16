@@ -28,7 +28,6 @@ public:
 	void dragEvent(ofDragInfo dragInfo);
 	void gotMessage(ofMessage msg);
 	void initLightingAndMaterials();
-	void setCameraTarget();
 	glm::vec3 ofApp::getMousePointOnPlane(glm::vec3 p, glm::vec3 n);
 	void resolveCollision();
 	void checkCollision();
@@ -54,6 +53,10 @@ public:
 	ParticleEmitter explosionemitter;
 	bool explosiontriggered;
 
+	bool raySelectWithOctree(ofVec3f&);
+	glm::vec3 getHeadingVector(float);
+	glm::vec3 getRightVector(float);
+
 	float exhausttimer;
 	float explosiontimer;
 
@@ -64,7 +67,23 @@ public:
 	ofVbo vbo, explosionvbo;
 	ofShader shader, explosionshader;
 
+	ofCamera* currentCam = nullptr;
+
 	ofEasyCam cam;
+
+	ofCamera followCam; // Camera with view following lander
+	glm::vec3 cameraPosition = glm::vec3(-60, 90, 70);  // fixed position of camera
+
+	// The camera attached to the lander
+	ofCamera fixedCam1;
+	ofCamera fixedCam2;
+	ofCamera fixedCam3;
+
+	// ADDED
+	bool pointSelected;
+	ofVec3f selectedPoint;
+	ofVec3f selectPos;
+
 	ofLight light;
 
 	ofxPanel gui;
@@ -80,9 +99,13 @@ public:
 	vector<ofColor> levelColors;
 	TreeNode selectedNode;
 
-	ofVec3f selectedPoint;
+	// heading vector
+	glm::vec3 shipHeading = glm::vec3(0, 0, -1); // initial forward direction
+	float shipRotation = 0; // rotation angle in degrees
+
 	ofVec3f intersectPoint;
 	glm::vec3 mouseDownPos;
+
 	float altitude;
 
 	ofTrueTypeFont titleFont;
@@ -113,4 +136,13 @@ public:
 	bool lost = false;
 	bool won = false;
 	bool disableDragging = false;
+	bool thrusting = false;
+
+	int fuel = 120; //2 minutes of fuel
+	uint64_t lastDecrementTime = 0;
+	int decrementInterval = 1000; //1 second in milliseconds
+
+	//Sound objects
+	ofSoundPlayer ambient;
+	ofSoundPlayer thrust;
 };
