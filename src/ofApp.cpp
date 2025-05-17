@@ -77,7 +77,7 @@ void ofApp::setup() {
 
 	//Load textures
 	if (!ofLoadImage(particleTex, "images/nova_0.png")) {
-		cout << "Particle Texture File: images/dot.png not found" << endl;
+		cout << "Particle Texture File: images/nova_0.png not found" << endl;
 		ofExit();
 	}
 
